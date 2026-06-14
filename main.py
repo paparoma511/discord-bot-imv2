@@ -75,12 +75,14 @@ class ReasonModal(discord.ui.Modal):
 
         try:
             if self.action == "approve":
-                await self.user.send(f"✅ Принято\n{self.reason.value}")
+                await self.user.send(f"🎉 **Ваша заявка на сервере IMPERIAL || Project ПРИНЯТА!**\n
+**Комментарий:{self.reason.value}**")
                 await interaction.channel.send("Принято")
                 await log(f"Заявка принята {self.user}")
 
             else:
-                await self.user.send(f"❌ Отклонено\n{self.reason.value}")
+                await self.user.send(❌ **Ваша заявка на сервере IMPERIAL || Project ОТКЛОНЕНА.**\n
+**Причина:{self.reason.value}**")
                 await interaction.channel.send("Отклонено")
                 await log(f"Заявка отклонена {self.user}")
 
@@ -98,7 +100,7 @@ class AdminView(discord.ui.View):
         super().__init__(timeout=None)
         self.user_id = user_id
 
-    @discord.ui.button(label="Взять", style=discord.ButtonStyle.blurple)
+    @discord.ui.button(label="Взять на рассмотрение", style=discord.ButtonStyle.blurple)
     async def take(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         if not is_admin(interaction.user):
@@ -106,16 +108,16 @@ class AdminView(discord.ui.View):
 
         user = interaction.guild.get_member(self.user_id)
         if user:
-            await user.send("👀 Взято в работу")
+            await user.send("👀 **Ваша заявка на сервере IMPERIAL || Project взята на рассмотрение администрацией!**")
 
-        await interaction.response.send_message("OK", ephemeral=True)
+        await interaction.response.send_message("Ваша заявка взята на рассмотрение", ephemeral=True)
 
-    @discord.ui.button(label="Принять", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="Принять заявку", style=discord.ButtonStyle.success)
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
         user = interaction.guild.get_member(self.user_id)
         await interaction.response.send_modal(ReasonModal(user, "approve"))
 
-    @discord.ui.button(label="Отклонить", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="Отклонить заявку", style=discord.ButtonStyle.danger)
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         user = interaction.guild.get_member(self.user_id)
         await interaction.response.send_modal(ReasonModal(user, "reject"))
