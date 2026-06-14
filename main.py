@@ -43,10 +43,12 @@ class ReasonModal(discord.ui.Modal):
         
         admin_role = interaction.guild.get_role(ADMIN_ROLE_ID)
         if admin_role not in interaction.user.roles:
-            await interaction.followup.send("❌ У вас нет прав для выполнения этого действия!", ephemeral=True)
+            await interaction.followup.send("❌ У вас недостаточно прав!", ephemeral=True)
             return
 
-        try:
+                try:
+            import asyncio # Импортируем стандартный таймер
+            
             if self.action_type == "approve":
                 await self.candidate.send(f"🎉 **Ваша заявка на сервере {interaction.guild.name} ПРИНЯТА!**\n**Комментарий:** {self.reason.value}")
                 await interaction.channel.send("📥 Заявка принята. Канал будет удален через 5 секунд...")
@@ -54,11 +56,13 @@ class ReasonModal(discord.ui.Modal):
                 await self.candidate.send(f"❌ **Ваша заявка на сервере {interaction.guild.name} ОТКЛОНЕНА.**\n**Причина:** {self.reason.value}")
                 await interaction.channel.send("📥 Заявка отклонена. Канал будет удален через 5 секунд...")
             
-            await discord.utils.sleep_until(discord.utils.utcnow() + discord.utils.timedelta(seconds=5))
+            # Простой и надежный таймер на 5 секунд
+            await asyncio.sleep(5)
             await interaction.channel.delete()
 
         except discord.Forbidden:
-            await interaction.channel.send(f"⚠️ Не удалось отправить ЛС {self.candidate.mention} (закрыты лички). Закройте канал вручную.")
+            await interaction.channel.send(f"⚠️ Ошибка прав: Убедитесь, что у роли бота на сервере включено право 'Управлять каналами' (Manage Channels) и его роль находится ВЫШЕ всех остальных ролей в настройках сервера!")
+
 
 
 # Панель управления заявкой внутри тикета (Для админов)
