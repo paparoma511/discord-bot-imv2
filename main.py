@@ -203,4 +203,7 @@ async def setup_apps(ctx):
 TOKEN = os.environ.get("BOT_TOKEN")
 
 if __name__ == "__main__":
-    if not TOKEN:
+    if TOKEN:
+        bot.run(TOKEN)
+    else:
+        raise RuntimeError("BOT_TOKEN не установлен в переменных окружения!")
