@@ -6,7 +6,7 @@ from discord.ext import commands
 # ==================== НАСТРОЙКА БОТА ====================
 
 APPLICATION_CHANNEL_ID = 1463831540386627635
-SECOND_APPLICATION_CHANNEL_ID = 1463832239400816695  # ВТОРОЙ КАНАЛ (замени на свой)
+SECOND_APPLICATION_CHANNEL_ID = 1463832239400816695
 CATEGORY_ID = 1474492852259262464
 
 ADMIN_ROLE_IDS = [1474489466952351987,1501898065248915506,1513631902966354111]
@@ -182,6 +182,7 @@ class ApplicationModal(discord.ui.Modal):
         embed.add_field(name="Игрок", value=member.mention, inline=False)
         embed.add_field(name="Ник", value=self.name.value, inline=False)
         embed.add_field(name="SteamID", value=self.steamid.value, inline=False)
+        embed.add_field(name="Ссылка Steam Профиль", value=self.linksteam.value, inline=False)
         embed.add_field(name="Опыт", value=self.experience.value, inline=False)
         embed.add_field(name="О себе", value=self.about.value, inline=False)
 
