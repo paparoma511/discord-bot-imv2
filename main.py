@@ -1,17 +1,22 @@
 import os
+import logging
 import asyncio
 import discord
 from discord.ext import commands
 from discord import app_commands
 
+# Настройка логирования для отображения подробных данных в консоли хостинга
+logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
+
 # ==================== НАСТРОЙКА БОТА ====================
 
 # --- 1. Подача заявок в администрацию ---
-APPLICATION_CHANNEL_ID = 1463831540386627635  # ID канала с кнопкой "Подать заявку"
+APPLICATION_CHANNEL_ID = 1463831540386627635  # ID текстового канала с кнопкой
 CATEGORY_ID = 1474492852259262464             # ID категории для тикетов-заявок
 ADMIN_ROLE_IDS = [1513631902966354111, 1501898065248915506, 1474489466952351987, 1474489959095205972] 
 
 MAIN_MESSAGE_TITLE = "Подача заявки в администрацию сервера NORULES"
+# Тройные кавычки гарантируют правильную работу многострочного текста без синтаксических ошибок
 MAIN_MESSAGE_DESCRIPTION = """Условия при которых ваша заявка будет принята
  - вам должно быть не меньше 13 лет
 - вы должны знать правила сервера
@@ -19,13 +24,12 @@ MAIN_MESSAGE_DESCRIPTION = """Условия при которых ваша за
 - у вас должно быть наигранно не менее 50 часов в SCP:SL
 -----------------------------
 ⚠️Шуточные заявки будут отклоняться, а кто подавал шуточную заявку может получить наказание на усмотрение администрации ⚠️"""
-
 FORM_TITLE = "Ваша анкета"
 
 # --- 2. Жалобы на игроков ---
-COMPLAINT_CHANNEL_ID = 1463832239400816695   # ID канала с кнопкой "Подать жалобу"
+COMPLAINT_CHANNEL_ID = 1463832239400816695   # ID текстового канала с кнопкой
 COMPLAINT_CATEGORY_ID = 1474492852259262464  # ID категории для тикетов-жалоб
-MOD_ROLE_IDS = [1513631902966354111, 1501898065248915506, 1474489466952351987, 1474489959095205972] # Роли, которые видят жалобы и кого пингует
+MOD_ROLE_IDS = [1513631902966354111, 1501898065248915506, 1474489466952351987, 1474489959095205972] # Роли модераторов, кого пингует
 
 COMPLAINT_MAIN_TITLE = "Подача жалобы на игрока"
 COMPLAINT_MAIN_DESC = "Нажмите на кнопку ниже, чтобы заполнить форму и сообщить о нарушителе. Модерация рассмотрит её в ближайшее время."
@@ -33,12 +37,12 @@ COMPLAINT_FORM_TITLE = "Форма жалобы"
 
 # ========================================================
 
-
 intents = discord.Intents.default()
 intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# Проверки уровней доступа
 def has_admin_role(user: discord.Member) -> bool:
     return any(role.id in ADMIN_ROLE_IDS for role in user.roles)
 
@@ -77,7 +81,7 @@ class ReasonModal(discord.ui.Modal):
             )
             await self.candidate.send(embed=embed_user)
         except discord.Forbidden:
-            await interaction.followup.send(f"⚠️ Не удалось отправить ЛС {self.candidate.mention}.", ephemeral=True)
+            logging.warning(f"Не удалось отправить ЛС кандидату {self.candidate}")
 
         await interaction.followup.send(f"Заявка {status}. Канал удалится через 5 секунд.")
         await asyncio.sleep(5)
@@ -92,13 +96,13 @@ class TicketControlView(discord.ui.View):
     @discord.ui.button(label="Принять", style=discord.ButtonStyle.green, custom_id="btn_approve")
     async def approve_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not has_admin_role(interaction.user):
-            return await interaction.response.send_message("У вас нет прав.", ephemeral=True)
+            return await interaction.response.send_message("У вас нет прав администратора.", ephemeral=True)
         await interaction.response.send_modal(ReasonModal(action_type="approve", candidate=self.candidate))
 
     @discord.ui.button(label="Отклонить", style=discord.ButtonStyle.red, custom_id="btn_deny")
     async def deny_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not has_admin_role(interaction.user):
-            return await interaction.response.send_message("У вас нет прав.", ephemeral=True)
+            return await interaction.response.send_message("У вас нет прав администратора.", ephemeral=True)
         await interaction.response.send_modal(ReasonModal(action_type="deny", candidate=self.candidate))
 
 
@@ -121,7 +125,7 @@ class ApplicationModal(discord.ui.Modal):
         category = guild.get_channel(CATEGORY_ID)
         
         if not category:
-            return await interaction.followup.send("Ошибка: Категория для заявок не найдена на сервере.", ephemeral=True)
+            return await interaction.followup.send("Ошибка: Категория для тикетов не найдена.", ephemeral=True)
 
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
@@ -134,6 +138,7 @@ class ApplicationModal(discord.ui.Modal):
 
         try:
             ticket_channel = await guild.create_text_channel(name=f"заявка-{interaction.user.name}", category=category, overwrites=overwrites)
+            
             embed = discord.Embed(title=f"Анкета от {interaction.user.display_name}", color=discord.Color.blue())
             embed.add_field(name="Возраст", value=self.age.value, inline=True)
             embed.add_field(name="Часы", value=self.hours.value, inline=True)
@@ -143,7 +148,7 @@ class ApplicationModal(discord.ui.Modal):
             await ticket_channel.send(embed=embed, view=TicketControlView(candidate=interaction.user))
             await interaction.followup.send(f"Заявка создана: {ticket_channel.mention}", ephemeral=True)
         except discord.Forbidden:
-            await interaction.followup.send("Ошибка: У бота нет прав на создание каналов в категории заявок!", ephemeral=True)
+            await interaction.followup.send("Ошибка: Недостаточно прав для создания текстового канала.", ephemeral=True)
 
 
 # ==================== МОДУЛЬ ЖАЛОБ ====================
@@ -155,7 +160,7 @@ class ComplaintControlView(discord.ui.View):
     @discord.ui.button(label="Закрыть тикет", style=discord.ButtonStyle.red, custom_id="btn_close_complaint")
     async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         if not has_mod_role(interaction.user):
-            return await interaction.response.send_message("У вас нет прав для закрытия этой жалобы.", ephemeral=True)
+            return await interaction.response.send_message("У вас нет прав модератора для закрытия этой жалобы.", ephemeral=True)
         
         await interaction.response.send_message("Тикет закрыт. Канал будет удален через 5 секунд.")
         await asyncio.sleep(5)
@@ -181,7 +186,7 @@ class ComplaintModal(discord.ui.Modal):
         category = guild.get_channel(COMPLAINT_CATEGORY_ID)
 
         if not category:
-            return await interaction.followup.send("Ошибка: Категория для жалоб не найдена на сервере.", ephemeral=True)
+            return await interaction.followup.send("Ошибка: Категория для жалоб не найдена.", ephemeral=True)
 
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
@@ -194,7 +199,6 @@ class ComplaintModal(discord.ui.Modal):
 
         try:
             complaint_channel = await guild.create_text_channel(name=f"жалоба-{interaction.user.name}", category=category, overwrites=overwrites)
+            
             embed = discord.Embed(title=f"Новая жалоба от {interaction.user.display_name}", color=discord.Color.red())
             embed.set_thumbnail(url=interaction.user.display_avatar.url)
-            embed.add_field(name="Нарушитель", value=self.offender.value, inline=True)
-            embed.add_field(name="Правило", value=self.rule.value, inline=True)
