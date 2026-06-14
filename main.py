@@ -1,4 +1,5 @@
 import os
+import asyncio
 import discord
 from discord.ext import commands
 
@@ -7,10 +8,10 @@ from discord.ext import commands
 APPLICATION_CHANNEL_ID = 1463831540386627635  # ID канала, где будет кнопка "Подать заявку"
 CATEGORY_ID = 1474492852259262464             # ID категории, где будут создаваться тикеты
 
-# ID РОЛИ, которая имеет право просматривать заявки и нажимать кнопки управления
-ADMIN_ROLE_ID = 1515695907721711766           # Замените на ID роли вашей администрации!
+# СПИСОК РОЛЕЙ АДМИНИСТРАЦИИ (Вы можете добавить сюда через запятую сколько угодно ID ролей)
+ADMIN_ROLE_IDS = [1513631902966354111, 1501898065248915506, 1474489466952351987, 1474489959095205972] 
 
-MAIN_MESSAGE_TITLE = "🛡️ Набор в команду сервера"
+MAIN_MESSAGE_TITLE = "ТЕСТ ПОДАЧИ ЗАЯВКИ"
 MAIN_MESSAGE_DESCRIPTION = "Нажмите на кнопку ниже, чтобы заполнить анкету. Для вас автоматически создастся отдельный чат-заявка."
 FORM_TITLE = "Анкета кандидата"
 
@@ -22,6 +23,11 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# Функция для проверки, есть ли у пользователя хотя бы одна админ-роль
+def has_admin_role(user: discord.Member) -> bool:
+    user_role_ids = [role.id for role in user.roles]
+    return any(role_id in ADMIN_ROLE_IDS for role_id in user_role_ids)
+
 # Модальное окно (Форма) для указания причины (Принятия/Отклонения)
 class ReasonModal(discord.ui.Modal):
     def __init__(self, action_type: str, candidate: discord.Member):
@@ -31,8 +37,8 @@ class ReasonModal(discord.ui.Modal):
         self.candidate = candidate
 
         self.reason = discord.ui.TextInput(
-            label="Введите причину/комментарий для кандидата:",
-            placeholder="Ваши навыки подходят... / Вы не подходите по возрасту...",
+            label="Причина",
+            placeholder="",
             style=discord.TextStyle.long,
             max_length=500
         )
@@ -41,14 +47,11 @@ class ReasonModal(discord.ui.Modal):
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
         
-        admin_role = interaction.guild.get_role(ADMIN_ROLE_ID)
-        if admin_role not in interaction.user.roles:
-            await interaction.followup.send("❌ У вас недостаточно прав!", ephemeral=True)
+        if not has_admin_role(interaction.user):
+            await interaction.followup.send("❌ У вас нет прав для выполнения этого действия!", ephemeral=True)
             return
 
-                try:
-            import asyncio # Импортируем стандартный таймер
-            
+        try:
             if self.action_type == "approve":
                 await self.candidate.send(f"🎉 **Ваша заявка на сервере {interaction.guild.name} ПРИНЯТА!**\n**Комментарий:** {self.reason.value}")
                 await interaction.channel.send("📥 Заявка принята. Канал будет удален через 5 секунд...")
@@ -56,13 +59,11 @@ class ReasonModal(discord.ui.Modal):
                 await self.candidate.send(f"❌ **Ваша заявка на сервере {interaction.guild.name} ОТКЛОНЕНА.**\n**Причина:** {self.reason.value}")
                 await interaction.channel.send("📥 Заявка отклонена. Канал будет удален через 5 секунд...")
             
-            # Простой и надежный таймер на 5 секунд
             await asyncio.sleep(5)
             await interaction.channel.delete()
 
         except discord.Forbidden:
-            await interaction.channel.send(f"⚠️ Ошибка прав: Убедитесь, что у роли бота на сервере включено право 'Управлять каналами' (Manage Channels) и его роль находится ВЫШЕ всех остальных ролей в настройках сервера!")
-
+            await interaction.channel.send(f"⚠️ Ошибка: Либо у кандидата закрыто ЛС, либо у бота нет прав 'Управлять каналами'. Канал не удален.")
 
 
 # Панель управления заявкой внутри тикета (Для админов)
@@ -75,8 +76,7 @@ class AdminTicketView(discord.ui.View):
     async def review_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         
-        admin_role = interaction.guild.get_role(ADMIN_ROLE_ID)
-        if admin_role not in interaction.user.roles:
+        if not has_admin_role(interaction.user):
             await interaction.followup.send("❌ У вас нет прав для управления заявками!", ephemeral=True)
             return
 
@@ -116,10 +116,11 @@ class ApplicationModal(discord.ui.Modal):
     def __init__(self):
         super().__init__(title=FORM_TITLE)
 
-        self.name = discord.ui.TextInput(label="Как вас зовут и сколько вам лет?", placeholder="Иван, 18 лет", min_length=2, max_length=50)
-        self.timezone = discord.ui.TextInput(label="Ваш часовой пояс и онлайн в день?", placeholder="МСК, 4-5 часов", max_length=30)
-        self.experience = discord.ui.TextInput(label="Был ли опыт работы модератором?", placeholder="Да, на крупном сервере...", style=discord.TextStyle.long, required=False)
-        self.about = discord.ui.TextInput(label="Расскажите немного о себе", placeholder="Почему именно вы должны занять эту должность?", style=discord.TextStyle.long)
+        self.name = discord.ui.TextInput(label="Ваш игровой никнейм", placeholder="", min_length=3, max_length=50)
+        self.timezone = discord.ui.TextInput(label="Ваш возраст", placeholder="ПРИНИМАЕМ ОТ 13 ЛЕТ!", max_length=30)
+        self.experience = discord.ui.TextInput(label="Был ли опыт работы администратором?", placeholder="", style=discord.TextStyle.long)
+        self.about = discord.ui.TextInput(label="Расскажите немного о себе", placeholder="", style=discord.TextStyle.long)
+        self.admin = discord.ui.TextInput(label="Почему вы должны стать администратором?", placeholder="", style=discord.TextStyle.long)
 
         self.add_item(self.name)
         self.add_item(self.timezone)
@@ -131,39 +132,44 @@ class ApplicationModal(discord.ui.Modal):
 
         guild = interaction.guild
         member = interaction.user
-
         category = discord.utils.get(guild.categories, id=CATEGORY_ID)
-        admin_role = guild.get_role(ADMIN_ROLE_ID)
 
-        if not category or not admin_role:
-            await interaction.followup.send("❌ Ошибка: Категория или роль администрации настроены неверно!", ephemeral=True)
+        if not category:
+            await interaction.followup.send("❌ Ошибка: Категория для заявок настроена неверно!", ephemeral=True)
             return
 
+        # Настраиваем права: скрываем от всех, открываем для кандидата и бота
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             member: discord.PermissionOverwrite(read_messages=True, send_messages=True, read_message_history=True),
-            admin_role: discord.PermissionOverwrite(read_messages=True, send_messages=True, read_message_history=True),
-            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, read_message_history=True)
         }
+
+        # Открываем права для каждой админ-роли из нашего списка настроек
+        for role_id in ADMIN_ROLE_IDS:
+            admin_role = guild.get_role(role_id)
+            if admin_role:
+                overwrites[admin_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True, read_message_history=True)
 
         channel_name = f"заявка-{member.name}"
         ticket_channel = await guild.create_text_channel(name=channel_name, category=category, overwrites=overwrites)
 
         embed = discord.Embed(title="📥 Новая заявка на должность!", color=discord.Color.green())
-        embed.add_field(name="Кандидат:", value=f"{member.mention} ({member.name})", inline=False)
-        embed.add_field(name="Как вас зовут и сколько вам лет?", value=self.name.value, inline=False)
-        embed.add_field(name="Ваш часовой пояс и онлайн в день?", value=self.timezone.value, inline=False)
-        embed.add_field(name="Был ли опыт работы модератором?", value=self.experience.value or "Не указано", inline=False)
-        embed.add_field(name="Расскажите немного о себе", value=self.about.value, inline=False)
+        embed.add_field(name="Кто подал заявку ->", value=f"{member.mention} ({member.name})", inline=False)
+        embed.add_field(name="Игровой никнейм ->", value=self.name.value, inline=False)
+        embed.add_field(name="Возвраст", value=self.timezone.value, inline=False)
+        embed.add_field(name="Был ли опыт работы администратором ->", value=self.experience.value, inline=False)
+        embed.add_field(name="Расскажите немного о себе ->", value=self.about.value, inline=False)
+        embed.add_field(name="Почему вы должны стать администратором ->", value=self.admin.value, inline=False)
         embed.set_thumbnail(url=member.display_avatar.url)
 
         await ticket_channel.send(
-            content=f"{admin_role.mention} | Получена новая анкета от {member.mention}!", 
+            content="🔔 Получена новая анкета!", 
             embed=embed, 
             view=AdminTicketView(candidate_id=member.id)
         )
 
-        await interaction.followup.send(f"✅ Ваша анкета принята! Создан приватный чат: {ticket_channel.mention}", ephemeral=True)
+        await interaction.followup.send(f"✅ Ваша заявка отправлена! Создан приватный чат: {ticket_channel.mention}", ephemeral=True)
 
 
 # Класс вечной стартовой кнопки
@@ -200,6 +206,3 @@ TOKEN = os.environ.get("BOT_TOKEN")
 
 if __name__ == "__main__":
     if not TOKEN:
-        print("❌ ОШИБКА: Переменная BOT_TOKEN пуста или не найдена на Bothost!")
-    else:
-        bot.run(TOKEN)
