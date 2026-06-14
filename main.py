@@ -37,7 +37,6 @@ COMPLAINT_FORM_TITLE = "Форма жалобы"
 intents = discord.Intents.default()
 intents.members = True
 
-# Используем современный класс Bot
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Вспомогательные проверки ролей
@@ -200,3 +199,7 @@ class ComplaintModal(discord.ui.Modal):
         embed.add_field(name="Правило", value=self.rule.value, inline=True)
         embed.add_field(name="Доказательства", value=self.evidence.value, inline=False)
         embed.add_field(name="Суть ситуации", value=self.details.value or "Не указано", inline=False)
+
+        ping_mentions = " ".join([f"<@&{role_id}>" for role_id in MOD_ROLE_IDS if guild.get_role(role_id)])
+
+        await complaint_channel.send(content=ping_mentions, embed=embed, view=ComplaintControlView())
