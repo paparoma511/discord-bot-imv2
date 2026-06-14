@@ -27,6 +27,9 @@ TOKEN = os.environ.get("BOT_TOKEN")
 
 if __name__ == "__main__":
     if not TOKEN:
-        print("❌ ОШИБКА: Переменная BOT_TOKEN пуста или не найдена на Bothost!")
+        print("❌ ОШИБКА: Хостинг вообще НЕ передал переменную BOT_TOKEN!")
     else:
+        # Это покажет нам, что именно считывает хостинг, не раскрывая весь токен
+        print(f"🔍 Тест токена: Длина = {len(TOKEN)}, Начинается на = '{TOKEN[:5]}'")
         bot.run(TOKEN)
+
