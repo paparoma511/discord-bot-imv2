@@ -53,10 +53,10 @@ class ReasonModal(discord.ui.Modal):
 
         try:
             if self.action_type == "approve":
-                await self.candidate.send(f"🎉 **Ваша заявка на сервере {interaction.guild.name} ПРИНЯТА!**\n**Комментарий:** {self.reason.value}")
+                await self.candidate.send(f"🎉 **Ваша заявка ПРИНЯТА!**\n**Комментарий:** {self.reason.value}")
                 await interaction.channel.send("📥 Заявка принята. Канал будет удален через 5 секунд...")
             else:
-                await self.candidate.send(f"❌ **Ваша заявка на сервере {interaction.guild.name} ОТКЛОНЕНА.**\n**Причина:** {self.reason.value}")
+                await self.candidate.send(f"❌ **Ваша заявка ОТКЛОНЕНА.**\n**Причина:** {self.reason.value}")
                 await interaction.channel.send("📥 Заявка отклонена. Канал будет удален через 5 секунд...")
             
             await asyncio.sleep(5)
@@ -86,7 +86,7 @@ class AdminTicketView(discord.ui.View):
             return
 
         try:
-            await candidate.send(f"👀 **Ваша заявка на сервере {interaction.guild.name} взята на рассмотрение администрацией!**")
+            await candidate.send(f"👀 **Ваша заявка взята на рассмотрение администрацией!**")
             await interaction.channel.send(f"⚙️ {interaction.user.mention} взял заявку на рассмотрение. Кандидату отправлено уведомление в ЛС.")
             
             button.disabled = True
@@ -116,13 +116,15 @@ class ApplicationModal(discord.ui.Modal):
     def __init__(self):
         super().__init__(title=FORM_TITLE)
 
-        self.name = discord.ui.TextInput(label="Как вас зовут и сколько вам лет?", placeholder="Иван, 18 лет", min_length=2, max_length=50)
-        self.timezone = discord.ui.TextInput(label="Ваш часовой пояс и онлайн в день?", placeholder="МСК, 4-5 часов", max_length=30)
-        self.experience = discord.ui.TextInput(label="Был ли опыт работы модератором?", placeholder="Да, на крупном сервере...", style=discord.TextStyle.long, required=False)
+        self.name = discord.ui.TextInput(label="Ваш игровой никнейм", placeholder="", min_length=2, max_length=30)
+        self.steanid = discord.ui.TextInput(label="Ваш SteamID@steam", placeholder="76xxxxx@steam", max_length=50)
+        self.linksteam = discord.ui.TextInput(label="Ссылка на ваш Steam Аккаунт", placeholder="ОН ДОЛЖЕН БЫТЬ НЕ ПРИВАТНЫМ", max_length=100)
+        self.experience = discord.ui.TextInput(label="Был ли опыт работы администратором?", placeholder="Да/нет", max_length=3)
         self.about = discord.ui.TextInput(label="Расскажите немного о себе", placeholder="Почему именно вы должны занять эту должность?", style=discord.TextStyle.long)
 
         self.add_item(self.name)
-        self.add_item(self.timezone)
+        self.add_item(self.steamid)
+        self.add_item(self.linksteam)
         self.add_item(self.experience)
         self.add_item(self.about)
 
@@ -167,7 +169,7 @@ class ApplicationModal(discord.ui.Modal):
             view=AdminTicketView(candidate_id=member.id)
         )
 
-        await interaction.followup.send(f"✅ Ваша анкета принята! Создан приватный чат: {ticket_channel.mention}", ephemeral=True)
+        await interaction.followup.send(f"✅ Ваша анкета принята! Создан приватный чат: {ticket_channel.mention}, прочтите правила в категории <#1492091496147451945>", ephemeral=True)
 
 
 # Класс вечной стартовой кнопки
