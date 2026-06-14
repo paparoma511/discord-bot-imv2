@@ -202,7 +202,5 @@ async def setup_apps(ctx):
     await ctx.send(f"✅ Кнопка заявок отправлена в канал {channel.mention}!")
 
 
-TOKEN = os.environ.get("BOT_TOKEN")
-
 if __name__ == "__main__":
-    if not TOKEN:
+    bot.run(os.environ.get("BOT_TOKEN"))
