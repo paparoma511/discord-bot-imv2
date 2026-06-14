@@ -35,10 +35,14 @@ async def hello(ctx):
     await ctx.send(f"Привет, {ctx.author.mention}! Рад тебя видеть. 👋")
 
 # Считываем токен из настроек вашего хостинга (из переменной BOT_TOKEN)
-TOKEN = os.getenv("BOT_TOKEN")
+# .... (все ваши команды !ping и !hello остаются без изменений выше)
+
+# Прямое указание нового токена без использования переменных окружения
+TOKEN = "MTUxMDM5MTQwNjUyMTIyNTM3OA.GPQXOh.lPElic8TsF-fe9xyZ1DaIkkohriqLNYmBwKBsY"
 
 if __name__ == "__main__":
     bot.run(TOKEN)
+
 
 
 
