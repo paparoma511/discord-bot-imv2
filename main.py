@@ -41,7 +41,6 @@ class ReasonModal(discord.ui.Modal):
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
         
-        # Проверяем роль админа
         admin_role = interaction.guild.get_role(ADMIN_ROLE_ID)
         if admin_role not in interaction.user.roles:
             await interaction.followup.send("❌ У вас нет прав для выполнения этого действия!", ephemeral=True)
@@ -55,12 +54,11 @@ class ReasonModal(discord.ui.Modal):
                 await self.candidate.send(f"❌ **Ваша заявка на сервере {interaction.guild.name} ОТКЛОНЕНА.**\n**Причина:** {self.reason.value}")
                 await interaction.channel.send("📥 Заявка отклонена. Канал будет удален через 5 секунд...")
             
-            # Удаляем тикет через 5 секунд
             await discord.utils.sleep_until(discord.utils.utcnow() + discord.utils.timedelta(seconds=5))
             await interaction.channel.delete()
 
         except discord.Forbidden:
-            await interaction.channel.send(f"⚠️ Не удалось отправить сообщение в ЛС {self.candidate.mention} (закрыты личные сообщения). Канал удален не будет, закройте вручную.")
+            await interaction.channel.send(f"⚠️ Не удалось отправить ЛС {self.candidate.mention} (закрыты лички). Закройте канал вручную.")
 
 
 # Панель управления заявкой внутри тикета (Для админов)
@@ -69,7 +67,6 @@ class AdminTicketView(discord.ui.View):
         super().__init__(timeout=None)
         self.candidate_id = candidate_id
 
-    # Кнопка: Взять на рассмотрение
     @discord.ui.button(label="Взять на рассмотрение", style=discord.ButtonStyle.blurple, custom_id="admin:review")
     async def review_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
@@ -93,7 +90,6 @@ class AdminTicketView(discord.ui.View):
         except discord.Forbidden:
             await interaction.channel.send(f"⚠️ Заявка на рассмотрении, но у {candidate.mention} закрыты ЛС.")
 
-    # Кнопка: Принять
     @discord.ui.button(label="Принять", style=discord.ButtonStyle.success, custom_id="admin:approve")
     async def approve_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         candidate = interaction.guild.get_member(self.candidate_id)
@@ -102,7 +98,6 @@ class AdminTicketView(discord.ui.View):
             return
         await interaction.response.send_modal(ReasonModal(action_type="approve", candidate=candidate))
 
-    # Кнопка: Отклонить
     @discord.ui.button(label="Отклонить", style=discord.ButtonStyle.danger, custom_id="admin:reject")
     async def reject_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         candidate = interaction.guild.get_member(self.candidate_id)
@@ -152,8 +147,6 @@ class ApplicationModal(discord.ui.Modal):
 
         embed = discord.Embed(title="📥 Новая заявка на должность!", color=discord.Color.green())
         embed.add_field(name="Кандидат:", value=f"{member.mention} ({member.name})", inline=False)
-        
-        # Исправленный вывод текстов вопросов (без использования устаревшего .label)
         embed.add_field(name="Как вас зовут и сколько вам лет?", value=self.name.value, inline=False)
         embed.add_field(name="Ваш часовой пояс и онлайн в день?", value=self.timezone.value, inline=False)
         embed.add_field(name="Был ли опыт работы модератором?", value=self.experience.value or "Не указано", inline=False)
@@ -203,3 +196,6 @@ TOKEN = os.environ.get("BOT_TOKEN")
 
 if __name__ == "__main__":
     if not TOKEN:
+        print("❌ ОШИБКА: Переменная BOT_TOKEN пуста или не найдена на Bothost!")
+    else:
+        bot.run(TOKEN)
