@@ -117,7 +117,7 @@ class ApplicationModal(discord.ui.Modal):
         super().__init__(title=FORM_TITLE)
 
         self.name = discord.ui.TextInput(label="Ваш игровой никнейм", placeholder="", min_length=2, max_length=30)
-        self.steanid = discord.ui.TextInput(label="Ваш SteamID@steam", placeholder="76xxxxx@steam", max_length=50)
+        self.steamid = discord.ui.TextInput(label="Ваш SteamID@steam", placeholder="76xxxxx@steam", max_length=50)
         self.linksteam = discord.ui.TextInput(label="Ссылка на ваш Steam Аккаунт", placeholder="ОН ДОЛЖЕН БЫТЬ НЕ ПРИВАТНЫМ", max_length=100)
         self.experience = discord.ui.TextInput(label="Был ли опыт работы администратором?", placeholder="Да/нет", max_length=3)
         self.about = discord.ui.TextInput(label="Расскажите немного о себе", placeholder="Почему именно вы должны занять эту должность?", style=discord.TextStyle.long)
