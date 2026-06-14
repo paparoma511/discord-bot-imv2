@@ -5,7 +5,6 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-# Настройка логирования для консоли хостинга
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
 
 # ==================== НАСТРОЙКА БОТА ====================
@@ -28,7 +27,7 @@ FORM_TITLE = "Ваша анкета"
 # --- 2. Жалобы на игроков ---
 COMPLAINT_CHANNEL_ID = 1463832239400816695   # ID текстового канала с кнопкой
 COMPLAINT_CATEGORY_ID = 1474492852259262464  # ID категории для тикетов-жалоб
-MOD_ROLE_IDS = [1513631902966354111, 1501898065248915506, 1474489466952351987, 1474489959095205972] # ВПИШИТЕ СЮДА ID ролей модераторов, кого пинговать
+MOD_ROLE_IDS = [1513631902966354111, 1501898065248915506, 1474489466952351987, 1474489959095205972] # ID ролей модераторов через запятую
 
 COMPLAINT_MAIN_TITLE = "Подача жалобы на игрока"
 COMPLAINT_MAIN_DESC = "Нажмите на кнопку ниже, чтобы заполнить форму и сообщить о нарушителе. Модерация рассмотрит её в ближайшее время."
@@ -71,15 +70,16 @@ class ReasonModal(discord.ui.Modal):
         status = "ПРИНЯТА" if self.action_type == "approve" else "ОТКЛОНЕНА"
         color = discord.Color.green() if self.action_type == "approve" else discord.Color.red()
         
+        embed_user = discord.Embed(
+            title="Результат рассмотрения заявки",
+            description=f"Ваша заявка на сервере NORULES была **{status}**.\n\n**Причина:** {self.reason.value}",
+            color=color
+        )
+        
         try:
-            embed_user = discord.Embed(
-                title="Результат рассмотрения заявки",
-                description=f"Ваша заявка на сервере NORULES была **{status}**.\n\n**Причина:** {self.reason.value}",
-                color=color
-            )
             await self.candidate.send(embed=embed_user)
-        except discord.Forbidden:
-            logging.warning(f"Не удалось отправить ЛС кандидату {self.candidate}")
+        except Exception:
+            logging.warning("Не удалось отправить ЛС кандидату")
 
         await interaction.followup.send(f"Заявка {status}. Канал удалится через 5 секунд.")
         await asyncio.sleep(5)
@@ -134,19 +134,16 @@ class ApplicationModal(discord.ui.Modal):
             if admin_role:
                 overwrites[admin_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
 
-        try:
-            ticket_channel = await guild.create_text_channel(name=f"заявка-{interaction.user.name}", category=category, overwrites=overwrites)
-            
-            embed = discord.Embed(title=f"Анкета от {interaction.user.display_name}", color=discord.Color.blue())
-            embed.add_field(name="Возраст", value=self.age.value, inline=True)
-            embed.add_field(name="Часы", value=self.hours.value, inline=True)
-            embed.add_field(name="Опыт", value=self.experience.value or "Нет", inline=False)
-            embed.add_field(name="О себе", value=self.about.value, inline=False)
+        ticket_channel = await guild.create_text_channel(name=f"заявка-{interaction.user.name}", category=category, overwrites=overwrites)
+        
+        embed = discord.Embed(title=f"Анкета от {interaction.user.display_name}", color=discord.Color.blue())
+        embed.add_field(name="Возраст", value=self.age.value, inline=True)
+        embed.add_field(name="Часы", value=self.hours.value, inline=True)
+        embed.add_field(name="Опыт", value=self.experience.value or "Нет", inline=False)
+        embed.add_field(name="О себе", value=self.about.value, inline=False)
 
-            await ticket_channel.send(embed=embed, view=TicketControlView(candidate=interaction.user))
-            await interaction.followup.send(f"Заявка создана: {ticket_channel.mention}", ephemeral=True)
-        except discord.Forbidden:
-            await interaction.followup.send("Ошибка: Недостаточно прав для создания текстового канала.", ephemeral=True)
+        await ticket_channel.send(embed=embed, view=TicketControlView(candidate=interaction.user))
+        await interaction.followup.send(f"Заявка создана: {ticket_channel.mention}", ephemeral=True)
 
 
 # ==================== МОДУЛЬ ЖАЛОБ ====================
@@ -195,9 +192,14 @@ class ComplaintModal(discord.ui.Modal):
             if mod_role:
                 overwrites[mod_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
 
-        try:
-            complaint_channel = await guild.create_text_channel(name=f"жалоба-{interaction.user.name}", category=category, overwrites=overwrites)
-            
-            embed = discord.Embed(title=f"Новая жалоба от {interaction.user.display_name}", color=discord.Color.red())
-            embed.set_thumbnail(url=interaction.user.display_avatar.url)
-            embed.add_field(name="Нарушитель", value=self.offender.value, inline=True)
+        complaint_channel = await guild.create_text_channel(name=f"жалоба-{interaction.user.name}", category=category, overwrites=overwrites)
+        
+        embed = discord.Embed(title=f"Новая жалоба от {interaction.user.display_name}", color=discord.Color.red())
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        embed.add_field(name="Нарушитель", value=self.offender.value, inline=True)
+        embed.add_field(name="Правило", value=self.rule.value, inline=True)
+        embed.add_field(name="Доказательства", value=self.evidence.value, inline=False)
+        embed.add_field(name="Суть ситуации", value=self.details.value or "Не указано", inline=False)
+
+        ping_mentions = " ".join([f"<@&{role_id}>" for role_id in MOD_ROLE_IDS if guild.get_role(role_id)])
+
