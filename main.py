@@ -35,9 +35,9 @@ COMPLAINT_FORM_TITLE = "Форма жалобы"
 # ========================================================
 
 intents = discord.Intents.default()
-intents.message_content = True
 intents.members = True
 
+# Используем современный класс Bot
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Вспомогательные проверки ролей
@@ -85,6 +85,7 @@ class ReasonModal(discord.ui.Modal):
         await asyncio.sleep(5)
         await interaction.channel.delete()
 
+
 class TicketControlView(discord.ui.View):
     def __init__(self, candidate: discord.Member):
         super().__init__(timeout=None)
@@ -101,6 +102,7 @@ class TicketControlView(discord.ui.View):
         if not has_admin_role(interaction.user):
             return await interaction.response.send_message("У вас нет прав.", ephemeral=True)
         await interaction.response.send_modal(ReasonModal(action_type="deny", candidate=self.candidate))
+
 
 class ApplicationModal(discord.ui.Modal):
     def __init__(self):
@@ -144,16 +146,14 @@ class ApplicationModal(discord.ui.Modal):
         await interaction.followup.send(f"Заявка создана: {ticket_channel.mention}", ephemeral=True)
 
 
-# ==================== МОДУЛЬ ЖАЛОБ (НОВОЕ) ====================
+# ==================== МОДУЛЬ ЖАЛОБ ====================
 
-# Кнопка закрытия внутри тикета жалобы
 class ComplaintControlView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
     @discord.ui.button(label="Закрыть тикет", style=discord.ButtonStyle.red, custom_id="btn_close_complaint")
     async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # Закрыть тикет могут только пользователи с модераторскими ролями
         if not has_mod_role(interaction.user):
             return await interaction.response.send_message("У вас нет прав для закрытия этой жалобы.", ephemeral=True)
         
@@ -161,13 +161,13 @@ class ComplaintControlView(discord.ui.View):
         await asyncio.sleep(5)
         await interaction.channel.delete()
 
-# Форма заполнения жалобы
+
 class ComplaintModal(discord.ui.Modal):
     def __init__(self):
         super().__init__(title=COMPLAINT_FORM_TITLE)
-        self.offender = discord.ui.TextInput(label="Никнейм / ID нарушителя", placeholder="Укажите кого вы обвиняете")
-        self.rule = discord.ui.TextInput(label="Какое правило нарушено?", placeholder="Например: 1.1 (Тимкилл)")
-        self.evidence = discord.ui.TextInput(label="Доказательства (Ссылки на фото/видео)", style=discord.TextStyle.long, placeholder="://youtube.com... или prnt.sc/...")
+        self.offender = discord.ui.TextInput(label="Никнейм / ID нарушителя", placeholder="Ник игрока")
+        self.rule = discord.ui.TextInput(label="Какое правило нарушено?", placeholder="Например: 1.1")
+        self.evidence = discord.ui.TextInput(label="Доказательства (Ссылки)", style=discord.TextStyle.long, placeholder="Ссылки на видео/скриншоты")
         self.details = discord.ui.TextInput(label="Описание ситуации", style=discord.TextStyle.long, required=False)
 
         self.add_item(self.offender)
@@ -183,7 +183,6 @@ class ComplaintModal(discord.ui.Modal):
         if not category:
             return await interaction.followup.send("Ошибка: Категория для жалоб не найдена.", ephemeral=True)
 
-        # Настройка прав: видит создатель и модераторы
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True, attach_files=True)
@@ -193,10 +192,11 @@ class ComplaintModal(discord.ui.Modal):
             if mod_role:
                 overwrites[mod_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
 
-        # Создание канала жалобы
         complaint_channel = await guild.create_text_channel(name=f"жалоба-{interaction.user.name}", category=category, overwrites=overwrites)
 
-        # Формирование эмбеда с деталями
         embed = discord.Embed(title=f"Новая жалоба от {interaction.user.display_name}", color=discord.Color.red())
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
         embed.add_field(name="Нарушитель", value=self.offender.value, inline=True)
+        embed.add_field(name="Правило", value=self.rule.value, inline=True)
+        embed.add_field(name="Доказательства", value=self.evidence.value, inline=False)
+        embed.add_field(name="Суть ситуации", value=self.details.value or "Не указано", inline=False)
