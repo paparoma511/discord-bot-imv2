@@ -25,7 +25,6 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Модальное окно (Форма) для указания причины (Принятия/Отклонения)
 class ReasonModal(discord.ui.Modal):
     def __init__(self, action_type: str, candidate: discord.Member):
-        # action_type может быть "approve" (принять) или "reject" (отклонить)
         title_text = "Причина принятия" if action_type == "approve" else "Причина отклонения"
         super().__init__(title=title_text)
         self.action_type = action_type
@@ -42,7 +41,7 @@ class ReasonModal(discord.ui.Modal):
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
         
-        # Проверяем, есть ли у нажавшего роль админа
+        # Проверяем роль админа
         admin_role = interaction.guild.get_role(ADMIN_ROLE_ID)
         if admin_role not in interaction.user.roles:
             await interaction.followup.send("❌ У вас нет прав для выполнения этого действия!", ephemeral=True)
@@ -61,8 +60,7 @@ class ReasonModal(discord.ui.Modal):
             await interaction.channel.delete()
 
         except discord.Forbidden:
-            # Если у кандидата закрыто ЛС
-            await interaction.channel.send(f"⚠️ Не удалось отправить сообщение в ЛС {self.candidate.mention} (у него закрыты личные сообщения). Канал удален не будет, закройте вручную.")
+            await interaction.channel.send(f"⚠️ Не удалось отправить сообщение в ЛС {self.candidate.mention} (закрыты личные сообщения). Канал удален не будет, закройте вручную.")
 
 
 # Панель управления заявкой внутри тикета (Для админов)
@@ -83,14 +81,13 @@ class AdminTicketView(discord.ui.View):
 
         candidate = interaction.guild.get_member(self.candidate_id)
         if not candidate:
-            await interaction.channel.send("❌ Кндидат покинул сервер.")
+            await interaction.channel.send("❌ Кандидат покинул сервер.")
             return
 
         try:
             await candidate.send(f"👀 **Ваша заявка на сервере {interaction.guild.name} взята на рассмотрение администрацией!**")
             await interaction.channel.send(f"⚙️ {interaction.user.mention} взял заявку на рассмотрение. Кандидату отправлено уведомление в ЛС.")
             
-            # Отключаем кнопку, чтобы нельзя было нажать дважды
             button.disabled = True
             await interaction.message.edit(view=self)
         except discord.Forbidden:
@@ -103,8 +100,6 @@ class AdminTicketView(discord.ui.View):
         if not candidate:
             await interaction.response.send_message("❌ Кандидат покинул сервер.", ephemeral=True)
             return
-        
-        # Открываем форму ввода причины принятия
         await interaction.response.send_modal(ReasonModal(action_type="approve", candidate=candidate))
 
     # Кнопка: Отклонить
@@ -114,8 +109,6 @@ class AdminTicketView(discord.ui.View):
         if not candidate:
             await interaction.response.send_message("❌ Кандидат покинул сервер.", ephemeral=True)
             return
-            
-        # Открываем форму ввода причины отклонения
         await interaction.response.send_modal(ReasonModal(action_type="reject", candidate=candidate))
 
 
@@ -147,7 +140,6 @@ class ApplicationModal(discord.ui.Modal):
             await interaction.followup.send("❌ Ошибка: Категория или роль администрации настроены неверно!", ephemeral=True)
             return
 
-        # Права доступа: всем нельзя, кандидату и админам — можно
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
             member: discord.PermissionOverwrite(read_messages=True, send_messages=True, read_message_history=True),
@@ -160,13 +152,14 @@ class ApplicationModal(discord.ui.Modal):
 
         embed = discord.Embed(title="📥 Новая заявка на должность!", color=discord.Color.green())
         embed.add_field(name="Кандидат:", value=f"{member.mention} ({member.name})", inline=False)
-        embed.add_field(name=self.name.label, value=self.name.value, inline=False)
-        embed.add_field(name=self.timezone.label, value=self.timezone.value, inline=False)
-        embed.add_field(name=self.experience.label, value=self.experience.value or "Не указано", inline=False)
-        embed.add_field(name=self.about.label, value=self.about.value, inline=False)
+        
+        # Исправленный вывод текстов вопросов (без использования устаревшего .label)
+        embed.add_field(name="Как вас зовут и сколько вам лет?", value=self.name.value, inline=False)
+        embed.add_field(name="Ваш часовой пояс и онлайн в день?", value=self.timezone.value, inline=False)
+        embed.add_field(name="Был ли опыт работы модератором?", value=self.experience.value or "Не указано", inline=False)
+        embed.add_field(name="Расскажите немного о себе", value=self.about.value, inline=False)
         embed.set_thumbnail(url=member.display_avatar.url)
 
-        # Отправляем анкету и прикрепляем админ-панель управления (передаем ID кандидата)
         await ticket_channel.send(
             content=f"{admin_role.mention} | Получена новая анкета от {member.mention}!", 
             embed=embed, 
@@ -190,12 +183,23 @@ class ApplicationView(discord.ui.View):
 async def on_ready():
     print(f"✅ Робот {bot.user.name} успешно запущен и готов к работе!")
     await bot.change_presence(activity=discord.Game(name="Настройка сервера"))
-    
     bot.add_view(ApplicationView())
-    # ВАЖНО: Мы не регистрируем AdminTicketView как постоянную view при старте, 
-    # так как она создается динамически для каждого конкретного пользователя (по его candidate_id)
 
 
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def setup_apps(ctx):
+    channel = bot.get_channel(APPLICATION_CHANNEL_ID)
+    if channel is None:
+        await ctx.send("❌ Ошибка: Не удалось найти канал. Проверьте ID в main.py!")
+        return
+
+    embed = discord.Embed(title=MAIN_MESSAGE_TITLE, description=MAIN_MESSAGE_DESCRIPTION, color=discord.Color.blue())
+    await channel.send(embed=embed, view=ApplicationView())
+    await ctx.send(f"✅ Кнопка заявок отправлена в канал {channel.mention}!")
+
+
+TOKEN = os.environ.get("BOT_TOKEN")
+
+if __name__ == "__main__":
+    if not TOKEN:
