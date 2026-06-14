@@ -127,12 +127,14 @@ class ApplicationForm(discord.ui.Modal):
     def __init__(self):
         super().__init__(title="Заявка")
 
-        self.nick = discord.ui.TextInput(label="Ник")
-        self.steam = discord.ui.TextInput(label="SteamID")
-        self.about = discord.ui.TextInput(label="О себе", style=discord.TextStyle.long)
+        self.nick = discord.ui.TextInput(label="Ваш никнейм")
+        self.steamid = discord.ui.TextInput(label="Ваш SteamID")
+        self.steamlink = discord.ui.TextInput(label="Ссылка на ваш Steam аккаунт")
+        self.about = discord.ui.TextInput(label="Расскажите о себе", style=discord.TextStyle.long)
 
         self.add_item(self.nick)
-        self.add_item(self.steam)
+        self.add_item(self.steamid)
+        self.add_item(self.steamlink)
         self.add_item(self.about)
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -162,7 +164,8 @@ class ApplicationForm(discord.ui.Modal):
         embed = discord.Embed(title="Новая заявка")
         embed.add_field(name="Игрок", value=member.mention, inline=False)
         embed.add_field(name="Ник", value=self.nick.value, inline=False)
-        embed.add_field(name="Steam", value=self.steam.value, inline=False)
+        embed.add_field(name="SteamID", value=self.steamid.value, inline=False)
+        embed.add_field(name="Ссылка на Steam аккаунт", value=self.steamlink.value, inline=False)
         embed.add_field(name="О себе", value=self.about.value, inline=False)
 
         await channel.send(embed=embed, view=AdminView(member.id))
@@ -210,11 +213,11 @@ class MainView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Подать заявку", style=discord.ButtonStyle.success)
+    @discord.ui.button(label="Подать заявку в администрацию", style=discord.ButtonStyle.success)
     async def app(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(ApplicationForm())
 
-    @discord.ui.button(label="Пожаловаться", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="Пожаловаться на игрока/администратора", style=discord.ButtonStyle.danger)
     async def rep(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(ReportForm())
 
@@ -226,8 +229,8 @@ async def on_ready():
     print(f"Bot online: {bot.user}")
 
     embed = discord.Embed(
-        title="Панель",
-        description="Заявки и жалобы"
+        title="Подача заявки в администрацию и подача жалобы на игрока/администратора",
+        description="Условия при которых ваша заявка на администраторп будет принята\n- вам должно быть не меньше 13 лет\n- вы должны знать правила сервера\n- вы должны знать регламент администрации сервера\n- у вас должно быть наигранно не менее 50 часов в SCP:SL\n-----------------------------\n⚠️Шуточные заявки будут отклоняться ⚠️"
     )
 
     ch1 = await bot.fetch_channel(APPLICATION_CHANNEL_ID)
