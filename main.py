@@ -11,9 +11,15 @@ CATEGORY_ID = 1474492852259262464             # ID категории, где б
 # СПИСОК РОЛЕЙ АДМИНИСТРАЦИИ (Вы можете добавить сюда через запятую сколько угодно ID ролей)
 ADMIN_ROLE_IDS = [1513631902966354111, 1501898065248915506, 1474489466952351987, 1474489959095205972] 
 
-MAIN_MESSAGE_TITLE = "ТЕСТ ПОДАЧИ ЗАЯВКИ"
-MAIN_MESSAGE_DESCRIPTION = "Нажмите на кнопку ниже, чтобы заполнить анкету. Для вас автоматически создастся отдельный чат-заявка."
-FORM_TITLE = "Анкета кандидата"
+MAIN_MESSAGE_TITLE = "Подача заявки в администрацию сервера NORULES"
+MAIN_MESSAGE_DESCRIPTION = "Условия при которых ваша заявка будет принята
+- вам должно быть не меньше 13 лет
+- вы должны знать правила сервера
+- вы должны знать регламент администрации сервера
+- у вас должно быть наигранно не менее 50 часов в SCP:SL
+-----------------------------
+⚠️Шуточные заявки будут отклоняться ,а кто подавал шуточную заявку может получить наказание на усмотрение администрации ⚠️"
+FORM_TITLE = "Ваша анкета"
 
 # ========================================================
 
@@ -126,6 +132,7 @@ class ApplicationModal(discord.ui.Modal):
         self.add_item(self.timezone)
         self.add_item(self.experience)
         self.add_item(self.about)
+        self.add_item(self.admin)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
@@ -169,7 +176,7 @@ class ApplicationModal(discord.ui.Modal):
             view=AdminTicketView(candidate_id=member.id)
         )
 
-        await interaction.followup.send(f"✅ Ваша заявка отправлена! Создан приватный чат: {ticket_channel.mention}", ephemeral=True)
+        await interaction.followup.send(f"✅ Ваша заявка отправлена! Создан приватный чат: {ticket_channel.mention}. Прочтите правила сервера и регламент администрации в канале <#1492091496147451945> ", ephemeral=True)
 
 
 # Класс вечной стартовой кнопки
