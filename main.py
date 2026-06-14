@@ -6,19 +6,14 @@ from discord.ext import commands
 # ================= CONFIG =================
 
 APPLICATION_CHANNEL_ID = 1463831540386627635
-SECOND_APPLICATION_CHANNEL_ID = 1463832239400816695
-CATEGORY_ID = 1474492852259262464
+REPORT_CHANNEL_ID = 1463832239400816695
 
-ADMIN_ROLE_IDS = [
-    1474489466952351987,
-    1501898065248915506,
-    1513631902966354111
-]
+CATEGORY_APPLICATIONS = 1474492852259262464
+CATEGORY_REPORTS = 1474492852259262464
 
-MAIN_MESSAGE_TITLE = "Подача заявки"
-MAIN_MESSAGE_DESCRIPTION = "Нажмите кнопку ниже чтобы подать заявку"
+LOG_CHANNEL_ID = 1498669547484348467
 
-FORM_TITLE = "Заявка"
+ADMIN_ROLE_IDS = [1474489466952351987, 1501898065248915506, 1513631902966354111]
 
 # ================= BOT =================
 
@@ -29,24 +24,35 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
-def has_admin_role(member: discord.Member):
-    return any(role.id in ADMIN_ROLE_IDS for role in member.roles)
+def is_admin(member: discord.Member):
+    return any(r.id in ADMIN_ROLE_IDS for r in member.roles)
+
+
+# ================= LOG =================
+
+async def log(text: str):
+    try:
+        ch = await bot.fetch_channel(LOG_CHANNEL_ID)
+        await ch.send(f"📌 LOG:\n{text}")
+    except:
+        pass
 
 
 # ================= CLOSE TICKET =================
 
-class CloseTicketView(discord.ui.View):
+class CloseView(discord.ui.View):
     def __init__(self, owner_id: int):
         super().__init__(timeout=None)
         self.owner_id = owner_id
 
-    @discord.ui.button(label="Закрыть тикет", style=discord.ButtonStyle.danger)
+    @discord.ui.button(label="Закрыть", style=discord.ButtonStyle.danger)
     async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-        if interaction.user.id != self.owner_id and not has_admin_role(interaction.user):
+        if interaction.user.id != self.owner_id and not is_admin(interaction.user):
             return await interaction.response.send_message("❌ Нет прав", ephemeral=True)
 
-        await interaction.response.send_message("Закрываю...", ephemeral=True)
+        await interaction.response.send_message("Закрытие...", ephemeral=True)
+        await log(f"Тикет закрыт: {interaction.channel.name}")
         await asyncio.sleep(2)
         await interaction.channel.delete()
 
@@ -54,31 +60,35 @@ class CloseTicketView(discord.ui.View):
 # ================= REASON =================
 
 class ReasonModal(discord.ui.Modal):
-    def __init__(self, action, user):
+    def __init__(self, user, action):
         super().__init__(title="Причина")
-        self.action = action
         self.user = user
+        self.action = action
 
         self.reason = discord.ui.TextInput(label="Причина", style=discord.TextStyle.long)
         self.add_item(self.reason)
 
     async def on_submit(self, interaction: discord.Interaction):
-        if not has_admin_role(interaction.user):
+
+        if not is_admin(interaction.user):
             return await interaction.response.send_message("❌ Нет прав", ephemeral=True)
 
         try:
             if self.action == "approve":
-                await self.user.send(f"✅ Принят: {self.reason.value}")
+                await self.user.send(f"✅ Принято\n{self.reason.value}")
                 await interaction.channel.send("Принято")
+                await log(f"Заявка принята {self.user}")
+
             else:
-                await self.user.send(f"❌ Отклонён: {self.reason.value}")
+                await self.user.send(f"❌ Отклонено\n{self.reason.value}")
                 await interaction.channel.send("Отклонено")
+                await log(f"Заявка отклонена {self.user}")
 
             await asyncio.sleep(3)
             await interaction.channel.delete()
 
         except:
-            await interaction.channel.send("❌ Не удалось отправить ЛС")
+            await interaction.channel.send("❌ ЛС закрыты")
 
 
 # ================= ADMIN PANEL =================
@@ -91,7 +101,7 @@ class AdminView(discord.ui.View):
     @discord.ui.button(label="Взять", style=discord.ButtonStyle.blurple)
     async def take(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-        if not has_admin_role(interaction.user):
+        if not is_admin(interaction.user):
             return await interaction.response.send_message("❌ Нет прав", ephemeral=True)
 
         user = interaction.guild.get_member(self.user_id)
@@ -103,19 +113,19 @@ class AdminView(discord.ui.View):
     @discord.ui.button(label="Принять", style=discord.ButtonStyle.success)
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
         user = interaction.guild.get_member(self.user_id)
-        await interaction.response.send_modal(ReasonModal("approve", user))
+        await interaction.response.send_modal(ReasonModal(user, "approve"))
 
     @discord.ui.button(label="Отклонить", style=discord.ButtonStyle.danger)
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
         user = interaction.guild.get_member(self.user_id)
-        await interaction.response.send_modal(ReasonModal("reject", user))
+        await interaction.response.send_modal(ReasonModal(user, "reject"))
 
 
-# ================= FORM =================
+# ================= FORMS =================
 
-class Form(discord.ui.Modal):
+class ApplicationForm(discord.ui.Modal):
     def __init__(self):
-        super().__init__(title=FORM_TITLE)
+        super().__init__(title="Заявка")
 
         self.nick = discord.ui.TextInput(label="Ник")
         self.steam = discord.ui.TextInput(label="SteamID")
@@ -130,7 +140,7 @@ class Form(discord.ui.Modal):
         guild = interaction.guild
         member = interaction.user
 
-        category = discord.utils.get(guild.categories, id=CATEGORY_ID)
+        category = discord.utils.get(guild.categories, id=CATEGORY_APPLICATIONS)
 
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
@@ -156,42 +166,78 @@ class Form(discord.ui.Modal):
         embed.add_field(name="О себе", value=self.about.value, inline=False)
 
         await channel.send(embed=embed, view=AdminView(member.id))
-        await channel.send(view=CloseTicketView(member.id))
+        await channel.send(view=CloseView(member.id))
 
-        await interaction.response.send_message(f"Создано: {channel.mention}", ephemeral=True)
+        await log(f"Новая заявка: {member}")
 
 
-# ================= BUTTON =================
+class ReportForm(discord.ui.Modal):
+    def __init__(self):
+        super().__init__(title="Жалоба")
+
+        self.target = discord.ui.TextInput(label="На кого жалоба")
+        self.reason = discord.ui.TextInput(label="Причина", style=discord.TextStyle.long)
+
+        self.add_item(self.target)
+        self.add_item(self.reason)
+
+    async def on_submit(self, interaction: discord.Interaction):
+
+        guild = interaction.guild
+        member = interaction.user
+
+        category = discord.utils.get(guild.categories, id=CATEGORY_REPORTS)
+
+        channel = await guild.create_text_channel(
+            name=f"жалоба-{member.name}",
+            category=category
+        )
+
+        embed = discord.Embed(title="Новая жалоба")
+        embed.add_field(name="От", value=member.mention, inline=False)
+        embed.add_field(name="На", value=self.target.value, inline=False)
+        embed.add_field(name="Причина", value=self.reason.value, inline=False)
+
+        await channel.send(embed=embed, view=CloseView(member.id))
+        await log(f"Жалоба: {member} на {self.target.value}")
+
+        await interaction.response.send_message("Жалоба отправлена", ephemeral=True)
+
+
+# ================= MAIN PANEL =================
 
 class MainView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
     @discord.ui.button(label="Подать заявку", style=discord.ButtonStyle.success)
-    async def btn(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(Form())
+    async def app(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(ApplicationForm())
+
+    @discord.ui.button(label="Пожаловаться", style=discord.ButtonStyle.danger)
+    async def rep(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(ReportForm())
 
 
-# ================= START =================
+# ================= ON READY =================
 
 @bot.event
 async def on_ready():
-    print(f"Bot ready: {bot.user}")
+    print(f"Bot online: {bot.user}")
 
     embed = discord.Embed(
-        title=MAIN_MESSAGE_TITLE,
-        description=MAIN_MESSAGE_DESCRIPTION
+        title="Панель",
+        description="Заявки и жалобы"
     )
 
-    ch1 = bot.get_channel(APPLICATION_CHANNEL_ID)
-    if ch1:
-        await ch1.send(embed=embed, view=MainView())
+    ch1 = await bot.fetch_channel(APPLICATION_CHANNEL_ID)
+    await ch1.send(embed=embed, view=MainView())
 
-    ch2 = bot.get_channel(SECOND_APPLICATION_CHANNEL_ID)
-    if ch2:
-        await ch2.send(embed=embed, view=MainView())
+    ch2 = await bot.fetch_channel(REPORT_CHANNEL_ID)
+    await ch2.send(embed=embed, view=MainView())
 
+
+# ================= RUN =================
 
 TOKEN = os.getenv("BOT_TOKEN")
-
 bot.run(TOKEN)
