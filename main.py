@@ -3,7 +3,7 @@ import asyncio
 import discord
 from discord.ext import commands
 
-# ==================== НАСТРОЙКА ====================
+# ================= CONFIG =================
 
 APPLICATION_CHANNEL_ID = 1463831540386627635
 SECOND_APPLICATION_CHANNEL_ID = 1463832239400816695
@@ -15,18 +15,12 @@ ADMIN_ROLE_IDS = [
     1513631902966354111
 ]
 
-MAIN_MESSAGE_TITLE = "Подача заявки в администрацию сервера NORULES"
-MAIN_MESSAGE_DESCRIPTION = (
-    "Условия:\n"
-    "- 13+ лет\n"
-    "- знание правил\n"
-    "- 50+ часов SCP:SL\n"
-    "⚠️ Шутки = наказание"
-)
+MAIN_MESSAGE_TITLE = "Подача заявки"
+MAIN_MESSAGE_DESCRIPTION = "Нажмите кнопку ниже чтобы подать заявку"
 
-FORM_TITLE = "Подать заявку"
+FORM_TITLE = "Заявка"
 
-# ==================== BOT ====================
+# ================= BOT =================
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -35,139 +29,108 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 
-def has_admin_role(user: discord.Member) -> bool:
-    return any(role.id in ADMIN_ROLE_IDS for role in user.roles)
+def has_admin_role(member: discord.Member):
+    return any(role.id in ADMIN_ROLE_IDS for role in member.roles)
 
 
-# ==================== CLOSE TICKET ====================
+# ================= CLOSE TICKET =================
 
 class CloseTicketView(discord.ui.View):
     def __init__(self, owner_id: int):
         super().__init__(timeout=None)
         self.owner_id = owner_id
 
-    @discord.ui.button(
-        label="Закрыть тикет",
-        style=discord.ButtonStyle.danger
-    )
-    async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+    @discord.ui.button(label="Закрыть тикет", style=discord.ButtonStyle.danger)
+    async def close(self, interaction: discord.Interaction, button: discord.ui.Button):
 
-        member = interaction.user
-        is_admin = has_admin_role(member)
-        is_owner = member.id == self.owner_id
+        if interaction.user.id != self.owner_id and not has_admin_role(interaction.user):
+            return await interaction.response.send_message("❌ Нет прав", ephemeral=True)
 
-        if not is_admin and not is_owner:
-            return await interaction.response.send_message(
-                "❌ Нет прав",
-                ephemeral=True
-            )
-
-        await interaction.response.send_message("🔒 Закрытие...", ephemeral=True)
-        await asyncio.sleep(3)
+        await interaction.response.send_message("Закрываю...", ephemeral=True)
+        await asyncio.sleep(2)
         await interaction.channel.delete()
 
 
-# ==================== REASON MODAL ====================
+# ================= REASON =================
 
 class ReasonModal(discord.ui.Modal):
-    def __init__(self, action_type: str, candidate: discord.Member):
+    def __init__(self, action, user):
         super().__init__(title="Причина")
-        self.action_type = action_type
-        self.candidate = candidate
+        self.action = action
+        self.user = user
 
-        self.reason = discord.ui.TextInput(
-            label="Причина",
-            style=discord.TextStyle.long,
-            max_length=500
-        )
+        self.reason = discord.ui.TextInput(label="Причина", style=discord.TextStyle.long)
         self.add_item(self.reason)
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-
         if not has_admin_role(interaction.user):
-            return await interaction.followup.send("❌ Нет прав", ephemeral=True)
+            return await interaction.response.send_message("❌ Нет прав", ephemeral=True)
 
         try:
-            if self.action_type == "approve":
-                await self.candidate.send(
-                    f"🎉 Заявка ПРИНЯТА!\n{self.reason.value}"
-                )
-                await interaction.channel.send("✅ Принято")
+            if self.action == "approve":
+                await self.user.send(f"✅ Принят: {self.reason.value}")
+                await interaction.channel.send("Принято")
             else:
-                await self.candidate.send(
-                    f"❌ Заявка ОТКЛОНЕНА!\n{self.reason.value}"
-                )
-                await interaction.channel.send("❌ Отклонено")
+                await self.user.send(f"❌ Отклонён: {self.reason.value}")
+                await interaction.channel.send("Отклонено")
 
-            await asyncio.sleep(5)
+            await asyncio.sleep(3)
             await interaction.channel.delete()
 
-        except discord.Forbidden:
-            await interaction.channel.send("⚠️ ЛС закрыты")
+        except:
+            await interaction.channel.send("❌ Не удалось отправить ЛС")
 
 
-# ==================== ADMIN PANEL ====================
+# ================= ADMIN PANEL =================
 
-class AdminTicketView(discord.ui.View):
-    def __init__(self, candidate_id: int):
+class AdminView(discord.ui.View):
+    def __init__(self, user_id: int):
         super().__init__(timeout=None)
-        self.candidate_id = candidate_id
+        self.user_id = user_id
 
     @discord.ui.button(label="Взять", style=discord.ButtonStyle.blurple)
-    async def review(self, interaction: discord.Interaction, button: discord.ui.Button):
+    async def take(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         if not has_admin_role(interaction.user):
             return await interaction.response.send_message("❌ Нет прав", ephemeral=True)
 
-        candidate = interaction.guild.get_member(self.candidate_id)
-        if not candidate:
-            return await interaction.response.send_message("❌ Нет кандидата", ephemeral=True)
+        user = interaction.guild.get_member(self.user_id)
+        if user:
+            await user.send("👀 Взято в работу")
 
-        await candidate.send("👀 Ваша заявка на рассмотрении")
-        await interaction.response.send_message("⚙️ Взято", ephemeral=True)
-
-        button.disabled = True
-        await interaction.message.edit(view=self)
+        await interaction.response.send_message("OK", ephemeral=True)
 
     @discord.ui.button(label="Принять", style=discord.ButtonStyle.success)
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
-        candidate = interaction.guild.get_member(self.candidate_id)
-        await interaction.response.send_modal(ReasonModal("approve", candidate))
+        user = interaction.guild.get_member(self.user_id)
+        await interaction.response.send_modal(ReasonModal("approve", user))
 
     @discord.ui.button(label="Отклонить", style=discord.ButtonStyle.danger)
     async def reject(self, interaction: discord.Interaction, button: discord.ui.Button):
-        candidate = interaction.guild.get_member(self.candidate_id)
-        await interaction.response.send_modal(ReasonModal("reject", candidate))
+        user = interaction.guild.get_member(self.user_id)
+        await interaction.response.send_modal(ReasonModal("reject", user))
 
 
-# ==================== FORM ====================
+# ================= FORM =================
 
-class ApplicationModal(discord.ui.Modal):
+class Form(discord.ui.Modal):
     def __init__(self):
         super().__init__(title=FORM_TITLE)
 
-        self.name = discord.ui.TextInput(label="Ник")
-        self.steamid = discord.ui.TextInput(label="SteamID")
-        self.linksteam = discord.ui.TextInput(label="Steam ссылка")
-        self.experience = discord.ui.TextInput(label="Опыт?")
+        self.nick = discord.ui.TextInput(label="Ник")
+        self.steam = discord.ui.TextInput(label="SteamID")
         self.about = discord.ui.TextInput(label="О себе", style=discord.TextStyle.long)
 
-        self.add_item(self.name)
-        self.add_item(self.steamid)
-        self.add_item(self.linksteam)
-        self.add_item(self.experience)
+        self.add_item(self.nick)
+        self.add_item(self.steam)
         self.add_item(self.about)
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.defer(ephemeral=True)
 
         guild = interaction.guild
         member = interaction.user
 
         category = discord.utils.get(guild.categories, id=CATEGORY_ID)
-        if not category:
-            return await interaction.followup.send("❌ Нет категории", ephemeral=True)
 
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
@@ -175,8 +138,8 @@ class ApplicationModal(discord.ui.Modal):
             guild.me: discord.PermissionOverwrite(read_messages=True),
         }
 
-        for role_id in ADMIN_ROLE_IDS:
-            role = guild.get_role(role_id)
+        for r in ADMIN_ROLE_IDS:
+            role = guild.get_role(r)
             if role:
                 overwrites[role] = discord.PermissionOverwrite(read_messages=True)
 
@@ -188,65 +151,47 @@ class ApplicationModal(discord.ui.Modal):
 
         embed = discord.Embed(title="Новая заявка")
         embed.add_field(name="Игрок", value=member.mention, inline=False)
-        embed.add_field(name="Ник", value=self.name.value, inline=False)
-        embed.add_field(name="SteamID", value=self.steamid.value, inline=False)
-        embed.add_field(name="Ссылка", value=self.linksteam.value, inline=False)
-        embed.add_field(name="Опыт", value=self.experience.value, inline=False)
+        embed.add_field(name="Ник", value=self.nick.value, inline=False)
+        embed.add_field(name="Steam", value=self.steam.value, inline=False)
         embed.add_field(name="О себе", value=self.about.value, inline=False)
 
-        await channel.send(embed=embed, view=AdminTicketView(member.id))
+        await channel.send(embed=embed, view=AdminView(member.id))
+        await channel.send(view=CloseTicketView(member.id))
 
-        await channel.send(
-            content="🔒 Закрыть тикет:",
-            view=CloseTicketView(member.id)
-        )
-
-        await interaction.followup.send(f"✅ Создано: {channel.mention}", ephemeral=True)
+        await interaction.response.send_message(f"Создано: {channel.mention}", ephemeral=True)
 
 
-# ==================== BUTTON ====================
+# ================= BUTTON =================
 
-class ApplicationView(discord.ui.View):
+class MainView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(
-        label="Подать заявку",
-        style=discord.ButtonStyle.success
-    )
-    async def apply(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(ApplicationModal())
+    @discord.ui.button(label="Подать заявку", style=discord.ButtonStyle.success)
+    async def btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(Form())
 
 
-# ==================== ON READY ====================
+# ================= START =================
 
 @bot.event
 async def on_ready():
-    print(f"Bot online: {bot.user}")
+    print(f"Bot ready: {bot.user}")
 
     embed = discord.Embed(
         title=MAIN_MESSAGE_TITLE,
         description=MAIN_MESSAGE_DESCRIPTION
     )
 
-    # канал 1
-    try:
-        ch1 = await bot.fetch_channel(APPLICATION_CHANNEL_ID)
-        await ch1.send(embed=embed, view=ApplicationView())
-    except Exception as e:
-        print(f"Ошибка канал 1: {e}")
+    ch1 = bot.get_channel(APPLICATION_CHANNEL_ID)
+    if ch1:
+        await ch1.send(embed=embed, view=MainView())
 
-    # канал 2
-    try:
-        ch2 = await bot.fetch_channel(SECOND_APPLICATION_CHANNEL_ID)
-        await ch2.send(embed=embed, view=ApplicationView())
-    except Exception as e:
-        print(f"Ошибка канал 2: {e}")
+    ch2 = bot.get_channel(SECOND_APPLICATION_CHANNEL_ID)
+    if ch2:
+        await ch2.send(embed=embed, view=MainView())
 
-
-# ==================== RUN ====================
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-if __name__ == "__main__":
-    bot.run(TOKEN)
+bot.run(TOKEN)
