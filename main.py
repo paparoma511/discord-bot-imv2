@@ -38,7 +38,7 @@ async def hello(ctx):
 # .... (все ваши команды !ping и !hello остаются без изменений выше)
 
 # Прямое указание нового токена без использования переменных окружения
-TOKEN = "MTUxMDM5MTQwNjUyMTIyNTM3OA.GPQXOh.lPElic8TsF-fe9xyZ1DaIkkohriqLNYmBwKBsY"
+TOKEN = "MTUxMDM5MTQwNjUyMTIyNTM3OA.GFHFpC.Aua400crzFNyxbMT5AdonXy0CeGIl0qdkTG4mc"
 
 if __name__ == "__main__":
     bot.run(TOKEN)
