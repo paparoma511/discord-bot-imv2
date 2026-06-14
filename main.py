@@ -5,7 +5,9 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
+# Настройка логирования и принудительное отключение предупреждений о голосовых библиотеках (PyNaCl)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(levelname)s | %(message)s')
+logging.getLogger('discord.voice').setLevel(logging.ERROR)
 
 # ==================== НАСТРОЙКА БОТА ====================
 
@@ -27,7 +29,7 @@ FORM_TITLE = "Ваша анкета"
 # --- 2. Жалобы на игроков ---
 COMPLAINT_CHANNEL_ID = 1463832239400816695   # ID текстового канала с кнопкой
 COMPLAINT_CATEGORY_ID = 1474492852259262464  # ID категории для тикетов-жалоб
-MOD_ROLE_IDS = [1513631902966354111, 1501898065248915506, 1474489466952351987, 1474489959095205972] # ID ролей модераторов через запятую
+MOD_ROLE_IDS = [1513631902966354111, 1501898065248915506, 1474489466952351987, 1474489959095205972]  # ID ролей модераторов через запятую
 
 COMPLAINT_MAIN_TITLE = "Подача жалобы на игрока"
 COMPLAINT_MAIN_DESC = "Нажмите на кнопку ниже, чтобы заполнить форму и сообщить о нарушителе. Модерация рассмотрит её в ближайшее время."
@@ -35,8 +37,10 @@ COMPLAINT_FORM_TITLE = "Форма жалобы"
 
 # ========================================================
 
+# Включаем message_content интент, так как теперь мы используем текстовую команду !send
 intents = discord.Intents.default()
 intents.members = True
+intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -199,7 +203,3 @@ class ComplaintModal(discord.ui.Modal):
         embed.add_field(name="Нарушитель", value=self.offender.value, inline=True)
         embed.add_field(name="Правило", value=self.rule.value, inline=True)
         embed.add_field(name="Доказательства", value=self.evidence.value, inline=False)
-        embed.add_field(name="Суть ситуации", value=self.details.value or "Не указано", inline=False)
-
-        ping_mentions = " ".join([f"<@&{role_id}>" for role_id in MOD_ROLE_IDS if guild.get_role(role_id)])
-
