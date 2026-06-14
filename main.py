@@ -12,7 +12,7 @@ CATEGORY_ID = 1474492852259262464
 ADMIN_ROLE_IDS = [1474489466952351987,1501898065248915506,1513631902966354111]
 
 MAIN_MESSAGE_TITLE = "Подача заявки в администрацию сервера NORULES"
-MAIN_MESSAGE_DESCRIPTION = ("Условия при которых ваша заявка будет принята\n- вам должно быть не меньше 13 лет\n- вы должны знать правила сервера\n- вы должны знать регламент администрации сервера\n- у вас должно быть наигранно не менее 50 часов в SCP:SL\n-----------------------------\n ⚠️Шуточные заявки будут отклоняться ⚠️")
+MAIN_MESSAGE_DESCRIPTION = ("Условия при которых ваша заявка будет принята\n- вам должно быть не меньше 13 лет\n- вы должны знать правила сервера\n- вы должны знать регламент администрации сервера\n- у вас должно быть наигранно не менее 50 часов в SCP:SL\n-----------------------------\n⚠️Шуточные заявки будут отклоняться ⚠️")
 
 FORM_TITLE = "Подать заявку"
 
@@ -29,7 +29,7 @@ def has_admin_role(user: discord.Member) -> bool:
     return any(role.id in ADMIN_ROLE_IDS for role in user.roles)
 
 
-# ==================== ЗАКРЫТИЕ ТИКЕТА ====================
+# ==================== CLOSE TICKET ====================
 
 class CloseTicketView(discord.ui.View):
     def __init__(self, owner_id: int):
@@ -59,7 +59,7 @@ class CloseTicketView(discord.ui.View):
         await interaction.channel.delete()
 
 
-# ==================== РЕЗУЛЬТАТ ЗАЯВКИ ====================
+# ==================== REASON MODAL ====================
 
 class ReasonModal(discord.ui.Modal):
     def __init__(self, action_type: str, candidate: discord.Member):
@@ -99,7 +99,7 @@ class ReasonModal(discord.ui.Modal):
             await interaction.channel.send("⚠️ Не удалось отправить ЛС.")
 
 
-# ==================== АДМИН ПАНЕЛЬ ====================
+# ==================== ADMIN PANEL ====================
 
 class AdminTicketView(discord.ui.View):
     def __init__(self, candidate_id: int):
@@ -133,7 +133,7 @@ class AdminTicketView(discord.ui.View):
         await interaction.response.send_modal(ReasonModal("reject", candidate))
 
 
-# ==================== ФОРМА ====================
+# ==================== APPLICATION FORM ====================
 
 class ApplicationModal(discord.ui.Modal):
     def __init__(self):
@@ -182,7 +182,7 @@ class ApplicationModal(discord.ui.Modal):
         embed.add_field(name="Игрок", value=member.mention, inline=False)
         embed.add_field(name="Ник", value=self.name.value, inline=False)
         embed.add_field(name="SteamID", value=self.steamid.value, inline=False)
-        embed.add_field(name="Ссылка Steam Профиль", value=self.linksteam.value, inline=False)
+        embed.add_field(name="Ссылка Steam", value=self.linksteam.value, inline=False)
         embed.add_field(name="Опыт", value=self.experience.value, inline=False)
         embed.add_field(name="О себе", value=self.about.value, inline=False)
 
@@ -199,13 +199,17 @@ class ApplicationModal(discord.ui.Modal):
         )
 
 
-# ==================== КНОПКА ====================
+# ==================== MAIN BUTTON ====================
 
 class ApplicationView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Подать заявку", style=discord.ButtonStyle.success)
+    @discord.ui.button(
+        label="Подать заявку",
+        style=discord.ButtonStyle.success,
+        custom_id="apply:main"
+    )
     async def apply(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.send_modal(ApplicationModal())
 
@@ -215,28 +219,24 @@ class ApplicationView(discord.ui.View):
 @bot.event
 async def on_ready():
     print(f"Bot online: {bot.user}")
+
     bot.add_view(ApplicationView())
 
-    # канал 1
+    embed = discord.Embed(
+        title=MAIN_MESSAGE_TITLE,
+        description=MAIN_MESSAGE_DESCRIPTION
+    )
+
     channel1 = bot.get_channel(APPLICATION_CHANNEL_ID)
     if channel1:
-        embed = discord.Embed(
-            title=MAIN_MESSAGE_TITLE,
-            description=MAIN_MESSAGE_DESCRIPTION
-        )
         await channel1.send(embed=embed, view=ApplicationView())
 
-    # канал 2
     channel2 = bot.get_channel(SECOND_APPLICATION_CHANNEL_ID)
     if channel2:
-        embed = discord.Embed(
-            title=MAIN_MESSAGE_TITLE,
-            description=MAIN_MESSAGE_DESCRIPTION
-        )
         await channel2.send(embed=embed, view=ApplicationView())
 
 
-# ==================== SETUP ====================
+# ==================== SETUP COMMAND ====================
 
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -251,6 +251,8 @@ async def setup_apps(ctx):
     await channel.send(embed=embed, view=ApplicationView())
     await ctx.send("✅ Готово")
 
+
+# ==================== RUN ====================
 
 TOKEN = os.getenv("BOT_TOKEN")
 
