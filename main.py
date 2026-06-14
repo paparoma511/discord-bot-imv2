@@ -75,14 +75,12 @@ class ReasonModal(discord.ui.Modal):
 
         try:
             if self.action == "approve":
-                await self.user.send(f"🎉 **Ваша заявка на сервере IMPERIAL || Project ПРИНЯТА!**\n
-**Комментарий:{self.reason.value}**")
+                await self.user.send(f"🎉 **Ваша заявка на сервере IMPERIAL || Project ПРИНЯТА!**\n**Комментарий:{self.reason.value}**")
                 await interaction.channel.send("Принято")
                 await log(f"Заявка принята {self.user}")
 
             else:
-                await self.user.send(❌ **Ваша заявка на сервере IMPERIAL || Project ОТКЛОНЕНА.**\n
-**Причина:{self.reason.value}**")
+                await self.user.send(❌ **Ваша заявка на сервере IMPERIAL || Project ОТКЛОНЕНА.**\n**Причина:{self.reason.value}**")
                 await interaction.channel.send("Отклонено")
                 await log(f"Заявка отклонена {self.user}")
 
