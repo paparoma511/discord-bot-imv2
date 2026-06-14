@@ -233,7 +233,7 @@ async def on_ready():
     if ch1:
         await ch1.send(embed=embed, view=ApplicationView())
 
-    ch2 = bot.get_channel(SECOND_APPLICATION_CHANNEL_ID)
+    ch2 = bot.fetch_channel(SECOND_APPLICATION_CHANNEL_ID)
     if ch2:
         await ch2.send(embed=embed, view=ApplicationView())
 
