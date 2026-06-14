@@ -5,15 +5,32 @@ from discord.ext import commands
 
 # ==================== НАСТРОЙКА БОТА ====================
 
-APPLICATION_CHANNEL_ID = 1463831540386627635  # ID канала, где будет кнопка "Подать заявку"
-CATEGORY_ID = 1474492852259262464             # ID категории, где будут создаваться тикеты
-
-# СПИСОК РОЛЕЙ АДМИНИСТРАЦИИ (Вы можете добавить сюда через запятую сколько угодно ID ролей)
+# --- 1. Подача заявок в администрацию ---
+APPLICATION_CHANNEL_ID = 1463831540386627635  # ID канала с кнопкой "Подать заявку"
+CATEGORY_ID = 1474492852259262464             # ID категории для тикетов-заявок
 ADMIN_ROLE_IDS = [1513631902966354111, 1501898065248915506, 1474489466952351987, 1474489959095205972] 
 
 MAIN_MESSAGE_TITLE = "Подача заявки в администрацию сервера NORULES"
-MAIN_MESSAGE_DESCRIPTION = "Условия при которых ваша заявка будет принята\n - вам должно быть не меньше 13 лет\n- вы должны знать правила сервера\n- вы должны знать регламент администрации сервера\n- у вас должно быть наигранно не менее 50 часов в SCP:SL\n-----------------------------\n⚠️Шуточные заявки будут отклоняться ,а кто подавал шуточную заявку может получить наказание на усмотрение администрации ⚠️"
+MAIN_MESSAGE_DESCRIPTION = (
+    "Условия при которых ваша заявка будет принята\n"
+    " - вам должно быть не меньше 13 лет\n"
+    "- вы должны знать правила сервера\n"
+    "- вы должны знать регламент администрации сервера\n"
+    "- у вас должно быть наигранно не менее 50 часов в SCP:SL\n"
+    "-----------------------------\n"
+    "⚠️Шуточные заявки будут отклоняться, а кто подавал шуточную заявку "
+    "может получить наказание на усмотрение администрации ⚠️"
+)
 FORM_TITLE = "Ваша анкета"
+
+# --- 2. Жалобы на игроков (НОВОЕ) ---
+COMPLAINT_CHANNEL_ID = 1463832239400816695   # ЗАМЕНИТЕ! ID канала с кнопкой "Подать жалобу"
+COMPLAINT_CATEGORY_ID = 1474492852259262464  # ЗАМЕНИТЕ! ID категории для тикетов-жалоб
+MOD_ROLE_IDS = [1474489466952351987, 1474489959095205972, 1474490447203139736, 1513631902966354111, 1501898065248915506] # ЗАМЕНИТЕ! Роли, которые видят жалобы и кого пингует
+
+COMPLAINT_MAIN_TITLE = "Подача жалобы на игрока"
+COMPLAINT_MAIN_DESC = "Нажмите на кнопку ниже, чтобы заполнить форму и сообщить о нарушителе. Модерация рассмотрит её в ближайшее время."
+COMPLAINT_FORM_TITLE = "Форма жалобы"
 
 # ========================================================
 
@@ -23,12 +40,16 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Функция для проверки, есть ли у пользователя хотя бы одна админ-роль
+# Вспомогательные проверки ролей
 def has_admin_role(user: discord.Member) -> bool:
-    user_role_ids = [role.id for role in user.roles]
-    return any(role_id in ADMIN_ROLE_IDS for role_id in user_role_ids)
+    return any(role.id in ADMIN_ROLE_IDS for role in user.roles)
 
-# Модальное окно (Форма) для указания причины (Принятия/Отклонения)
+def has_mod_role(user: discord.Member) -> bool:
+    return any(role.id in MOD_ROLE_IDS for role in user.roles)
+
+
+# ==================== МОДУЛЬ ЗАЯВОК ====================
+
 class ReasonModal(discord.ui.Modal):
     def __init__(self, action_type: str, candidate: discord.Member):
         title_text = "Причина принятия" if action_type == "approve" else "Причина отклонения"
@@ -37,171 +58,145 @@ class ReasonModal(discord.ui.Modal):
         self.candidate = candidate
 
         self.reason = discord.ui.TextInput(
-            label="Причина",
-            placeholder="",
+            label="Укажите причину решения",
+            placeholder="Текст причины...",
             style=discord.TextStyle.long,
-            max_length=500
+            max_length=500,
+            required=True
         )
         self.add_item(self.reason)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer()
+        status = "ПРИНЯТА" if self.action_type == "approve" else "ОТКЛОНЕНА"
+        color = discord.Color.green() if self.action_type == "approve" else discord.Color.red()
         
-        if not has_admin_role(interaction.user):
-            await interaction.followup.send("❌ У вас нет прав для выполнения этого действия!", ephemeral=True)
-            return
-
         try:
-            if self.action_type == "approve":
-                await self.candidate.send(f"🎉 **Ваша заявка на сервере {interaction.guild.name} ПРИНЯТА!**\n**Комментарий:** {self.reason.value}")
-                await interaction.channel.send("📥 Заявка принята. Канал будет удален через 5 секунд...")
-            else:
-                await self.candidate.send(f"❌ **Ваша заявка на сервере {interaction.guild.name} ОТКЛОНЕНА.**\n**Причина:** {self.reason.value}")
-                await interaction.channel.send("📥 Заявка отклонена. Канал будет удален через 5 секунд...")
-            
-            await asyncio.sleep(5)
-            await interaction.channel.delete()
-
+            embed_user = discord.Embed(
+                title="Результат рассмотрения заявки",
+                description=f"Ваша заявка на сервере NORULES была **{status}**.\n\n**Причина:** {self.reason.value}",
+                color=color
+            )
+            await self.candidate.send(embed=embed_user)
         except discord.Forbidden:
-            await interaction.channel.send(f"⚠️ Ошибка: Либо у кандидата закрыто ЛС, либо у бота нет прав 'Управлять каналами'. Канал не удален.")
+            await interaction.followup.send(f"⚠️ Не удалось отправить ЛС {self.candidate.mention}.", ephemeral=True)
 
+        await interaction.followup.send(f"Заявка {status}. Канал удалится через 5 секунд.")
+        await asyncio.sleep(5)
+        await interaction.channel.delete()
 
-# Панель управления заявкой внутри тикета (Для админов)
-class AdminTicketView(discord.ui.View):
-    def __init__(self, candidate_id: int):
+class TicketControlView(discord.ui.View):
+    def __init__(self, candidate: discord.Member):
         super().__init__(timeout=None)
-        self.candidate_id = candidate_id
+        self.candidate = candidate
 
-    @discord.ui.button(label="Взять на рассмотрение", style=discord.ButtonStyle.blurple, custom_id="admin:review")
-    async def review_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        
-        if not has_admin_role(interaction.user):
-            await interaction.followup.send("❌ У вас нет прав для управления заявками!", ephemeral=True)
-            return
-
-        candidate = interaction.guild.get_member(self.candidate_id)
-        if not candidate:
-            await interaction.channel.send("❌ Кандидат покинул сервер.")
-            return
-
-        try:
-            await candidate.send(f"👀 **Ваша заявка на сервере {interaction.guild.name} взята на рассмотрение администрацией!**")
-            await interaction.channel.send(f"⚙️ {interaction.user.mention} взял заявку на рассмотрение. Кандидату отправлено уведомление в ЛС.")
-            
-            button.disabled = True
-            await interaction.message.edit(view=self)
-        except discord.Forbidden:
-            await interaction.channel.send(f"⚠️ Заявка на рассмотрении, но у {candidate.mention} закрыты ЛС.")
-
-    @discord.ui.button(label="Принять", style=discord.ButtonStyle.success, custom_id="admin:approve")
+    @discord.ui.button(label="Принять", style=discord.ButtonStyle.green, custom_id="btn_approve")
     async def approve_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        candidate = interaction.guild.get_member(self.candidate_id)
-        if not candidate:
-            await interaction.response.send_message("❌ Кандидат покинул сервер.", ephemeral=True)
-            return
-        await interaction.response.send_modal(ReasonModal(action_type="approve", candidate=candidate))
+        if not has_admin_role(interaction.user):
+            return await interaction.response.send_message("У вас нет прав.", ephemeral=True)
+        await interaction.response.send_modal(ReasonModal(action_type="approve", candidate=self.candidate))
 
-    @discord.ui.button(label="Отклонить", style=discord.ButtonStyle.danger, custom_id="admin:reject")
-    async def reject_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        candidate = interaction.guild.get_member(self.candidate_id)
-        if not candidate:
-            await interaction.response.send_message("❌ Кандидат покинул сервер.", ephemeral=True)
-            return
-        await interaction.response.send_modal(ReasonModal(action_type="reject", candidate=candidate))
+    @discord.ui.button(label="Отклонить", style=discord.ButtonStyle.red, custom_id="btn_deny")
+    async def deny_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not has_admin_role(interaction.user):
+            return await interaction.response.send_message("У вас нет прав.", ephemeral=True)
+        await interaction.response.send_modal(ReasonModal(action_type="deny", candidate=self.candidate))
 
-
-# Основная форма подачи анкеты кандидата
 class ApplicationModal(discord.ui.Modal):
     def __init__(self):
         super().__init__(title=FORM_TITLE)
-
-        self.name = discord.ui.TextInput(label="Ваш игровой никнейм", placeholder="", min_length=3, max_length=50)
-        self.timezone = discord.ui.TextInput(label="Ваш возраст", placeholder="ПРИНИМАЕМ ОТ 13 ЛЕТ!", max_length=30)
-        self.experience = discord.ui.TextInput(label="Был ли опыт работы администратором?", placeholder="", style=discord.TextStyle.long)
-        self.about = discord.ui.TextInput(label="Расскажите немного о себе", placeholder="", style=discord.TextStyle.long)
-        self.admin = discord.ui.TextInput(label="Почему вы должны стать администратором?", placeholder="", style=discord.TextStyle.long)
-
-        self.add_item(self.name)
-        self.add_item(self.timezone)
+        self.age = discord.ui.TextInput(label="Ваш возраст", placeholder="15", min_length=2, max_length=2)
+        self.hours = discord.ui.TextInput(label="Сколько часов в SCP:SL?", placeholder="120")
+        self.experience = discord.ui.TextInput(label="Имеется ли опыт?", style=discord.TextStyle.long, required=False)
+        self.about = discord.ui.TextInput(label="Расскажите о себе", style=discord.TextStyle.long)
+        
+        self.add_item(self.age)
+        self.add_item(self.hours)
         self.add_item(self.experience)
         self.add_item(self.about)
-        self.add_item(self.admin)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
-
         guild = interaction.guild
-        member = interaction.user
-        category = discord.utils.get(guild.categories, id=CATEGORY_ID)
-
+        category = guild.get_channel(CATEGORY_ID)
+        
         if not category:
-            await interaction.followup.send("❌ Ошибка: Категория для заявок настроена неверно!", ephemeral=True)
-            return
+            return await interaction.followup.send("Ошибка: Категория не найдена.", ephemeral=True)
 
-        # Настраиваем права: скрываем от всех, открываем для кандидата и бота
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            member: discord.PermissionOverwrite(read_messages=True, send_messages=True, read_message_history=True),
-            guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, read_message_history=True)
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True, attach_files=True)
         }
-
-        # Открываем права для каждой админ-роли из нашего списка настроек
         for role_id in ADMIN_ROLE_IDS:
             admin_role = guild.get_role(role_id)
             if admin_role:
-                overwrites[admin_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True, read_message_history=True)
+                overwrites[admin_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
 
-        channel_name = f"заявка-{member.name}"
-        ticket_channel = await guild.create_text_channel(name=channel_name, category=category, overwrites=overwrites)
+        ticket_channel = await guild.create_text_channel(name=f"заявка-{interaction.user.name}", category=category, overwrites=overwrites)
 
-        embed = discord.Embed(title="📥 Новая заявка на должность!", color=discord.Color.green())
-        embed.add_field(name="Кто подал заявку ->", value=f"{member.mention} ({member.name})", inline=False)
-        embed.add_field(name="Игровой никнейм ->", value=self.name.value, inline=False)
-        embed.add_field(name="Возвраст", value=self.timezone.value, inline=False)
-        embed.add_field(name="Был ли опыт работы администратором ->", value=self.experience.value, inline=False)
-        embed.add_field(name="Расскажите немного о себе ->", value=self.about.value, inline=False)
-        embed.add_field(name="Почему вы должны стать администратором ->", value=self.admin.value, inline=False)
-        embed.set_thumbnail(url=member.display_avatar.url)
+        embed = discord.Embed(title=f"Анкета от {interaction.user.display_name}", color=discord.Color.blue())
+        embed.add_field(name="Возраст", value=self.age.value, inline=True)
+        embed.add_field(name="Часы", value=self.hours.value, inline=True)
+        embed.add_field(name="Опыт", value=self.experience.value or "Нет", inline=False)
+        embed.add_field(name="О себе", value=self.about.value, inline=False)
 
-        await ticket_channel.send(
-            content="🔔 Получена новая анкета!", 
-            embed=embed, 
-            view=AdminTicketView(candidate_id=member.id)
-        )
-
-        await interaction.followup.send(f"✅ Ваша заявка отправлена! Создан приватный чат: {ticket_channel.mention}. Прочтите правила сервера и регламент администрации в канале <#1492091496147451945> ", ephemeral=True)
+        await ticket_channel.send(embed=embed, view=TicketControlView(candidate=interaction.user))
+        await interaction.followup.send(f"Заявка создана: {ticket_channel.mention}", ephemeral=True)
 
 
-# Класс вечной стартовой кнопки
-class ApplicationView(discord.ui.View):
+# ==================== МОДУЛЬ ЖАЛОБ (НОВОЕ) ====================
+
+# Кнопка закрытия внутри тикета жалобы
+class ComplaintControlView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Подать заявку", style=discord.ButtonStyle.success, custom_id="persistent_view:apply_ticket")
-    async def apply_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.send_modal(ApplicationModal())
+    @discord.ui.button(label="Закрыть тикет", style=discord.ButtonStyle.red, custom_id="btn_close_complaint")
+    async def close_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Закрыть тикет могут только пользователи с модераторскими ролями
+        if not has_mod_role(interaction.user):
+            return await interaction.response.send_message("У вас нет прав для закрытия этой жалобы.", ephemeral=True)
+        
+        await interaction.response.send_message("Тикет закрыт. Канал будет удален через 5 секунд.")
+        await asyncio.sleep(5)
+        await interaction.channel.delete()
 
+# Форма заполнения жалобы
+class ComplaintModal(discord.ui.Modal):
+    def __init__(self):
+        super().__init__(title=COMPLAINT_FORM_TITLE)
+        self.offender = discord.ui.TextInput(label="Никнейм / ID нарушителя", placeholder="Укажите кого вы обвиняете")
+        self.rule = discord.ui.TextInput(label="Какое правило нарушено?", placeholder="Например: 1.1 (Тимкилл)")
+        self.evidence = discord.ui.TextInput(label="Доказательства (Ссылки на фото/видео)", style=discord.TextStyle.long, placeholder="://youtube.com... или prnt.sc/...")
+        self.details = discord.ui.TextInput(label="Описание ситуации", style=discord.TextStyle.long, required=False)
 
-@bot.event
-async def on_ready():
-    print(f"✅ Робот {bot.user.name} успешно запущен и готов к работе!")
-    await bot.change_presence(activity=discord.Game(name="Настройка сервера"))
-    bot.add_view(ApplicationView())
+        self.add_item(self.offender)
+        self.add_item(self.rule)
+        self.add_item(self.evidence)
+        self.add_item(self.details)
 
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+        guild = interaction.guild
+        category = guild.get_channel(COMPLAINT_CATEGORY_ID)
 
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def setup_apps(ctx):
-    channel = bot.get_channel(APPLICATION_CHANNEL_ID)
-    if channel is None:
-        await ctx.send("❌ Ошибка: Не удалось найти канал. Проверьте ID в main.py!")
-        return
+        if not category:
+            return await interaction.followup.send("Ошибка: Категория для жалоб не найдена.", ephemeral=True)
 
-    embed = discord.Embed(title=MAIN_MESSAGE_TITLE, description=MAIN_MESSAGE_DESCRIPTION, color=discord.Color.blue())
-    await channel.send(embed=embed, view=ApplicationView())
-    await ctx.send(f"✅ Кнопка заявок отправлена в канал {channel.mention}!")
+        # Настройка прав: видит создатель и модераторы
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True, attach_files=True)
+        }
+        for role_id in MOD_ROLE_IDS:
+            mod_role = guild.get_role(role_id)
+            if mod_role:
+                overwrites[mod_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
 
+        # Создание канала жалобы
+        complaint_channel = await guild.create_text_channel(name=f"жалоба-{interaction.user.name}", category=category, overwrites=overwrites)
 
-if __name__ == "__main__":
-    bot.run(os.environ.get("BOT_TOKEN"))
+        # Формирование эмбеда с деталями
+        embed = discord.Embed(title=f"Новая жалоба от {interaction.user.display_name}", color=discord.Color.red())
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        embed.add_field(name="Нарушитель", value=self.offender.value, inline=True)
