@@ -229,13 +229,19 @@ async def on_ready():
         description=MAIN_MESSAGE_DESCRIPTION
     )
 
-    ch1 = bot.get_channel(APPLICATION_CHANNEL_ID)
-    if ch1:
+    # канал 1
+    try:
+        ch1 = await bot.fetch_channel(APPLICATION_CHANNEL_ID)
         await ch1.send(embed=embed, view=ApplicationView())
+    except Exception as e:
+        print(f"Ошибка канал 1: {e}")
 
-    ch2 = bot.fetch_channel(SECOND_APPLICATION_CHANNEL_ID)
-    if ch2:
+    # канал 2
+    try:
+        ch2 = await bot.fetch_channel(SECOND_APPLICATION_CHANNEL_ID)
         await ch2.send(embed=embed, view=ApplicationView())
+    except Exception as e:
+        print(f"Ошибка канал 2: {e}")
 
 
 # ==================== RUN ====================
