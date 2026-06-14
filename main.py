@@ -27,8 +27,9 @@ async def hello(ctx):
     await ctx.send(f"Привет, {ctx.author.mention}! Рад тебя видеть. 👋")
 
 # Теперь мы берем токен из скрытых переменных хостинга, а не пишем его в код!
-TOKEN = os.getenv("MTUxMDM5MTQwNjUyMTIyNTM3OA.Gy-zyM.b-CLKZFtOsbUyJPyPsrHnnD6CZXVEqWSGzXPsc")
+TOKEN = os.getenv("BOT_TOKEN")
 
 if __name__ == "__main__":
     bot.run(TOKEN)
+
 
