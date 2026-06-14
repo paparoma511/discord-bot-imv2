@@ -2,13 +2,14 @@ import os
 import asyncio
 import discord
 from discord.ext import commands
+from discord import app_commands
 
 # ==================== НАСТРОЙКА БОТА ====================
 
 # --- 1. Подача заявок в администрацию ---
-APPLICATION_CHANNEL_ID = 1463831540386627635  # ID канала с кнопкой "Подать заявку"
-CATEGORY_ID = 1474492852259262464             # ID категории для тикетов-заявок
-ADMIN_ROLE_IDS = [1513631902966354111, 1501898065248915506, 1474489466952351987, 1474489959095205972] 
+APPLICATION_CHANNEL_ID = 1463831540386627635  # ID текстового канала с кнопкой "Подать заявку"
+CATEGORY_ID = 1474492852259262464             # ID категории, где будут создаваться тикеты заявок
+ADMIN_ROLE_IDS = [1513631902966354111, 1501898065248915506, 1474489466952351987, 1474489959095205972] # ID ролей которые могут просматрривать созданый канал и нажимать на кнопки
 
 MAIN_MESSAGE_TITLE = "Подача заявки в администрацию сервера NORULES"
 MAIN_MESSAGE_DESCRIPTION = (
@@ -23,14 +24,14 @@ MAIN_MESSAGE_DESCRIPTION = (
 )
 FORM_TITLE = "Ваша анкета"
 
-# --- 2. Жалобы на игроков (НОВОЕ) ---
-COMPLAINT_CHANNEL_ID = 1463832239400816695   # ЗАМЕНИТЕ! ID канала с кнопкой "Подать жалобу"
-COMPLAINT_CATEGORY_ID = 1474492852259262464  # ЗАМЕНИТЕ! ID категории для тикетов-жалоб
-MOD_ROLE_IDS = [1474489466952351987, 1474489959095205972, 1474490447203139736, 1513631902966354111, 1501898065248915506] # ЗАМЕНИТЕ! Роли, которые видят жалобы и кого пингует
+# --- 2. Жалобы на игроков ---
+COMPLAINT_CHANNEL_ID = 1463832239400816695   # ID текстового канала с кнопкой "Подать жалобу"
+COMPLAINT_CATEGORY_ID = 1474492852259262464  # ID категории, где будут создаваться тикеты жалоб
+MOD_ROLE_IDS = [1513631902966354111, 1501898065248915506, 1474489466952351987, 1474489959095205972] # Роли модераторов, кого пингует и кто видит жалобы
 
 COMPLAINT_MAIN_TITLE = "Подача жалобы на игрока"
 COMPLAINT_MAIN_DESC = "Нажмите на кнопку ниже, чтобы заполнить форму и сообщить о нарушителе. Модерация рассмотрит её в ближайшее время."
-COMPLAINT_FORM_TITLE = "Форма жалобы"
+COMPLAINT_FORM_TITLE = "Подать жалобу"
 
 # ========================================================
 
@@ -39,7 +40,6 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Вспомогательные проверки ролей
 def has_admin_role(user: discord.Member) -> bool:
     return any(role.id in ADMIN_ROLE_IDS for role in user.roles)
 
@@ -122,7 +122,7 @@ class ApplicationModal(discord.ui.Modal):
         category = guild.get_channel(CATEGORY_ID)
         
         if not category:
-            return await interaction.followup.send("Ошибка: Категория не найдена.", ephemeral=True)
+            return await interaction.followup.send("Ошибка: Категория для заявок не найдена на сервере.", ephemeral=True)
 
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
@@ -133,16 +133,18 @@ class ApplicationModal(discord.ui.Modal):
             if admin_role:
                 overwrites[admin_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
 
-        ticket_channel = await guild.create_text_channel(name=f"заявка-{interaction.user.name}", category=category, overwrites=overwrites)
+        try:
+            ticket_channel = await guild.create_text_channel(name=f"заявка-{interaction.user.name}", category=category, overwrites=overwrites)
+            embed = discord.Embed(title=f"Анкета от {interaction.user.display_name}", color=discord.Color.blue())
+            embed.add_field(name="Возраст", value=self.age.value, inline=True)
+            embed.add_field(name="Часы", value=self.hours.value, inline=True)
+            embed.add_field(name="Опыт", value=self.experience.value or "Нет", inline=False)
+            embed.add_field(name="О себе", value=self.about.value, inline=False)
 
-        embed = discord.Embed(title=f"Анкета от {interaction.user.display_name}", color=discord.Color.blue())
-        embed.add_field(name="Возраст", value=self.age.value, inline=True)
-        embed.add_field(name="Часы", value=self.hours.value, inline=True)
-        embed.add_field(name="Опыт", value=self.experience.value or "Нет", inline=False)
-        embed.add_field(name="О себе", value=self.about.value, inline=False)
-
-        await ticket_channel.send(embed=embed, view=TicketControlView(candidate=interaction.user))
-        await interaction.followup.send(f"Заявка создана: {ticket_channel.mention}", ephemeral=True)
+            await ticket_channel.send(embed=embed, view=TicketControlView(candidate=interaction.user))
+            await interaction.followup.send(f"Заявка создана: {ticket_channel.mention}", ephemeral=True)
+        except discord.Forbidden:
+            await interaction.followup.send("Ошибка: У бота нет прав на создание каналов в категории заявок!", ephemeral=True)
 
 
 # ==================== МОДУЛЬ ЖАЛОБ ====================
@@ -180,7 +182,7 @@ class ComplaintModal(discord.ui.Modal):
         category = guild.get_channel(COMPLAINT_CATEGORY_ID)
 
         if not category:
-            return await interaction.followup.send("Ошибка: Категория для жалоб не найдена.", ephemeral=True)
+            return await interaction.followup.send("Ошибка: Категория для жалоб не найдена на сервере.", ephemeral=True)
 
         overwrites = {
             guild.default_role: discord.PermissionOverwrite(read_messages=False),
@@ -191,15 +193,9 @@ class ComplaintModal(discord.ui.Modal):
             if mod_role:
                 overwrites[mod_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
 
-        complaint_channel = await guild.create_text_channel(name=f"жалоба-{interaction.user.name}", category=category, overwrites=overwrites)
-
-        embed = discord.Embed(title=f"Новая жалоба от {interaction.user.display_name}", color=discord.Color.red())
-        embed.set_thumbnail(url=interaction.user.display_avatar.url)
-        embed.add_field(name="Нарушитель", value=self.offender.value, inline=True)
-        embed.add_field(name="Правило", value=self.rule.value, inline=True)
-        embed.add_field(name="Доказательства", value=self.evidence.value, inline=False)
-        embed.add_field(name="Суть ситуации", value=self.details.value or "Не указано", inline=False)
-
-        ping_mentions = " ".join([f"<@&{role_id}>" for role_id in MOD_ROLE_IDS if guild.get_role(role_id)])
-
-        await complaint_channel.send(content=ping_mentions, embed=embed, view=ComplaintControlView())
+        try:
+            complaint_channel = await guild.create_text_channel(name=f"жалоба-{interaction.user.name}", category=category, overwrites=overwrites)
+            embed = discord.Embed(title=f"Новая жалоба от {interaction.user.display_name}", color=discord.Color.red())
+            embed.set_thumbnail(url=interaction.user.display_avatar.url)
+            embed.add_field(name="Нарушитель", value=self.offender.value, inline=True)
+            embed.add_field(name="Правило", value=self.rule.value, inline=True)
