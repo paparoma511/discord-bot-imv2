@@ -22,14 +22,11 @@ async def ping(ctx):
 async def hello(ctx):
     await ctx.send(f"Привет, {ctx.author.mention}! Рад тебя видеть. 👋")
 
-# Читаем токен из локального файла
-TOKEN = ""
-if os.path.exists("token.txt"):
-    with open("token.txt", "r", encoding="utf-8") as f:
-        TOKEN = f.read().strip()
+# На хостинге Bothost.ru переменная считывается так:
+TOKEN = os.environ.get("BOT_TOKEN")
 
 if __name__ == "__main__":
     if not TOKEN:
-        print("❌ ОШИБКА: Файл token.txt пуст или не найден в файловом менеджере!")
+        print("❌ ОШИБКА: Переменная BOT_TOKEN пуста или не найдена на Bothost!")
     else:
         bot.run(TOKEN)
