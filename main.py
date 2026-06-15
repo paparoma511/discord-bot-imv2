@@ -80,8 +80,7 @@ class ReasonModal(discord.ui.Modal):
                 await log(f"Заявка принята {self.user}")
 
             else:
-                await self.user.send(f"❌ **Ваша заявка на сервере IMPERIAL || Project ОТКЛОНЕНА.**\n**Причина:** 
-{self.reason.value}")
+                await self.user.send(f"❌ **Ваша заявка на сервере IMPERIAL || Project ОТКЛОНЕНА.**\n**Причина:** {self.reason.value}")
                 await interaction.channel.send("Отклонено")
                 await log(f"Заявка отклонена {self.user}")
 
