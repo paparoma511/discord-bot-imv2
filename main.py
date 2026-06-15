@@ -33,7 +33,7 @@ def is_admin(member: discord.Member):
 async def log(text: str):
     try:
         ch = await bot.fetch_channel(LOG_CHANNEL_ID)
-        await ch.send(f"📌 LOG:\n{text}")
+        await ch.send(f"[ℹ️] LOGGER:\n{text}")
     except:
         pass
 
@@ -75,12 +75,13 @@ class ReasonModal(discord.ui.Modal):
 
         try:
             if self.action == "approve":
-                await self.user.send(f"🎉 **Ваша заявка на сервере IMPERIAL || Project ПРИНЯТА!**\n**Комментарий:{self.reason.value}**")
+                await self.user.send(f"🎉 **Ваша заявка на сервере IMPERIAL || Project ПРИНЯТА!**\n**Комментарий:** {self.reason.value}")
                 await interaction.channel.send("Принято")
                 await log(f"Заявка принята {self.user}")
 
             else:
-                await self.user.send(f"❌ **Ваша заявка на сервере IMPERIAL || Project ОТКЛОНЕНА.**\n**Причина:{self.reason.value}**")
+                await self.user.send(f"❌ **Ваша заявка на сервере IMPERIAL || Project ОТКЛОНЕНА.**\n**Причина:** 
+{self.reason.value}")
                 await interaction.channel.send("Отклонено")
                 await log(f"Заявка отклонена {self.user}")
 
@@ -230,7 +231,7 @@ async def on_ready():
 
     embed = discord.Embed(
         title="Подача заявки в администрацию и подача жалобы на игрока/администратора",
-        description="Условия при которых ваша заявка на администраторп будет принята\n- вам должно быть не меньше 13 лет\n- вы должны знать правила сервера\n- вы должны знать регламент администрации сервера\n- у вас должно быть наигранно не менее 50 часов в SCP:SL\n-----------------------------\n⚠️Шуточные заявки будут отклоняться ⚠️"
+        description="Условия при которых ваша заявка на администраторп будет принята\n- вам должно быть не меньше 13 лет\n- вы должны знать правила сервера\n- вы должны знать регламент администрации сервера\n- у вас должно быть наигранно не менее 50 часов в SCP:SL\n-у вас должен быть открытый Steam аккаунт\n-----------------------------\n⚠️Шуточные заявки будут отклоняться ⚠️"
     )
 
     ch1 = await bot.fetch_channel(APPLICATION_CHANNEL_ID)
