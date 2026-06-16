@@ -1,3 +1,5 @@
+print("FILE STARTED")
+
 import os
 import asyncio
 import discord
@@ -227,102 +229,21 @@ class MainView(discord.ui.View):
 
 @bot.event
 async def on_ready():
-    print(f"BOT ONLINE: {bot.user}")
+    print("ON_READY CALLED")
 
     try:
         synced = await bot.tree.sync()
-        print(f"SYNCED COMMANDS: {len(synced)}")
+        print(f"SYNCED: {len(synced)}")
 
         for cmd in synced:
-            print(f"/{cmd.name}")
+            print(f"COMMAND: /{cmd.name}")
 
     except Exception as e:
         print(f"SYNC ERROR: {e}")
 
-
-@bot.tree.command(
-    name="application",
-    description="Отправить панель подачи заявки"
-)
-async def application(interaction: discord.Interaction):
-
-    if not is_admin(interaction.user):
-        return await interaction.response.send_message(
-            "❌ Нет прав",
-            ephemeral=True
-        )
-
-    embed = discord.Embed(
-        title="Подача заявки в администрацию",
-        description=(
-            "Условия при которых ваша заявка на администратора будет принята\n\n"
-            "- вам должно быть не меньше 13 лет\n"
-            "- вы должны знать правила сервера\n"
-            "- у вас должно быть наигранно не менее 50 часов в SCP:SL\n"
-            "- у вас должен быть открытый Steam аккаунт\n\n"
-            "-----------------------------\n"
-            "Без этого ваша заявка будет автоматически отклонена\n"
-            "-----------------------------\n"
-            "⚠️ Шуточные заявки будут отклоняться. "
-            "Кто подавал шуточную заявку получит наказание "
-            "на усмотрение высшей администрации ⚠️"
-        )
-    )
-
-    await interaction.channel.send(
-        embed=embed,
-        view=MainView()
-    )
-
-    await interaction.response.send_message(
-        "✅ Панель заявок отправлена",
-        ephemeral=True
-    )
+    print(f"BOT ONLINE: {bot.user}")
 
 
-@bot.tree.command(
-    name="reportplayer",
-    description="Отправить панель жалоб"
-)
-async def reportplayer(interaction: discord.Interaction):
-
-    if not is_admin(interaction.user):
-        return await interaction.response.send_message(
-            "❌ Нет прав",
-            ephemeral=True
-        )
-
-    embed = discord.Embed(
-        title="Подача жалобы",
-        description=(
-            "Нажмите кнопку ниже для подачи жалобы "
-            "на игрока или администратора."
-        )
-    )
-
-    view = discord.ui.View(timeout=None)
-
-    button = discord.ui.Button(
-        label="Пожаловаться на игрока/администратора",
-        style=discord.ButtonStyle.danger
-    )
-
-    async def callback(btn_interaction: discord.Interaction):
-        await btn_interaction.response.send_modal(ReportForm())
-
-    button.callback = callback
-
-    view.add_item(button)
-
-    await interaction.channel.send(
-        embed=embed,
-        view=view
-    )
-
-    await interaction.response.send_message(
-        "✅ Панель жалоб отправлена",
-        ephemeral=True
-    )
 # ================= RUN =================
 
 TOKEN = os.getenv("BOT_TOKEN")
