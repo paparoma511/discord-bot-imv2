@@ -237,15 +237,17 @@ async def on_ready():
 
 @bot.event
 async def on_ready():
-    print("ON_READY START")
+    print(f"BOT ONLINE: {bot.user}")
 
     try:
         synced = await bot.tree.sync()
-        print(f"SYNCED: {len(synced)}")
+        print(f"SYNCED COMMANDS: {len(synced)}")
+
+        for cmd in synced:
+            print(f"/{cmd.name}")
+
     except Exception as e:
         print(f"SYNC ERROR: {e}")
-
-    print(f"BOT ONLINE: {bot.user}")
 
 
 @bot.tree.command(
