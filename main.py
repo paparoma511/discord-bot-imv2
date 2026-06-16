@@ -235,6 +235,18 @@ async def on_ready():
 
     print(f"Bot online: {bot.user}")
 
+@bot.event
+async def on_ready():
+    print("ON_READY START")
+
+    try:
+        synced = await bot.tree.sync()
+        print(f"SYNCED: {len(synced)}")
+    except Exception as e:
+        print(f"SYNC ERROR: {e}")
+
+    print(f"BOT ONLINE: {bot.user}")
+
 
 @bot.tree.command(
     name="application",
@@ -274,6 +286,7 @@ async def application(interaction: discord.Interaction):
         "✅ Панель заявок отправлена",
         ephemeral=True
     )
+
 
 @bot.tree.command(
     name="reportplayer",
