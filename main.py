@@ -2,6 +2,7 @@ import os
 import asyncio
 import discord
 from discord.ext import commands
+from discord import app_commands
 
 # ================= CONFIG =================
 
@@ -33,7 +34,7 @@ def is_admin(member: discord.Member):
 async def log(text: str):
     try:
         ch = await bot.fetch_channel(LOG_CHANNEL_ID)
-        await ch.send(f"[ℹ️] LOGGER:\n{text}")
+        await ch.send(f"[ℹ️] LOGGER: {text}")
     except:
         pass
 
@@ -226,20 +227,92 @@ class MainView(discord.ui.View):
 
 @bot.event
 async def on_ready():
+    await bot.tree.sync()
     print(f"Bot online: {bot.user}")
 
+
+@bot.tree.command(
+    name="application",
+    description="Отправить панель подачи заявки"
+)
+async def application(interaction: discord.Interaction):
+
+    if not is_admin(interaction.user):
+        return await interaction.response.send_message(
+            "❌ Нет прав",
+            ephemeral=True
+        )
+
     embed = discord.Embed(
-        title="Подача заявки в администрацию и подача жалобы на игрока/администратора",
-        description="Условия при которых ваша заявка на администраторп будет принята\n- вам должно быть не меньше 13 лет\n- вы должны знать правила сервера\n- вы должны знать регламент администрации сервера\n- у вас должно быть наигранно не менее 50 часов в SCP:SL\n- у вас должен быть открытый Steam аккаунт\n-----------------------------\n⚠️Шуточные заявки будут отклоняться ⚠️"
+        title="Подача заявки в администрацию",
+        description=(
+            "Условия при которых ваша заявка на администратора будет принята\n\n"
+            "- вам должно быть не меньше 13 лет\n"
+            "- вы должны знать правила сервера\n"
+            "- у вас должно быть наигранно не менее 50 часов в SCP:SL\n"
+            "- у вас должен быть открытый Steam аккаунт\n\n"
+            "-----------------------------\n"
+            "Без этого ваша заявка будет автоматически отклонена\n"
+            "-----------------------------\n"
+            "⚠️ Шуточные заявки будут отклоняться. "
+            "Кто подавал шуточную заявку получит наказание "
+            "на усмотрение высшей администрации ⚠️"
+        )
     )
 
-    ch1 = await bot.fetch_channel(APPLICATION_CHANNEL_ID)
-    await ch1.send(embed=embed, view=MainView())
+    await interaction.channel.send(
+        embed=embed,
+        view=MainView()
+    )
 
-    ch2 = await bot.fetch_channel(REPORT_CHANNEL_ID)
-    await ch2.send(embed=embed, view=MainView())
+    await interaction.response.send_message(
+        "✅ Панель заявок отправлена",
+        ephemeral=True
+    )
 
+@bot.tree.command(
+    name="reportplayer",
+    description="Отправить панель жалоб"
+)
+async def reportplayer(interaction: discord.Interaction):
 
+    if not is_admin(interaction.user):
+        return await interaction.response.send_message(
+            "❌ Нет прав",
+            ephemeral=True
+        )
+
+    embed = discord.Embed(
+        title="Подача жалобы",
+        description=(
+            "Нажмите кнопку ниже для подачи жалобы "
+            "на игрока или администратора."
+        )
+    )
+
+    view = discord.ui.View(timeout=None)
+
+    button = discord.ui.Button(
+        label="Пожаловаться на игрока/администратора",
+        style=discord.ButtonStyle.danger
+    )
+
+    async def callback(btn_interaction: discord.Interaction):
+        await btn_interaction.response.send_modal(ReportForm())
+
+    button.callback = callback
+
+    view.add_item(button)
+
+    await interaction.channel.send(
+        embed=embed,
+        view=view
+    )
+
+    await interaction.response.send_message(
+        "✅ Панель жалоб отправлена",
+        ephemeral=True
+    )
 # ================= RUN =================
 
 TOKEN = os.getenv("BOT_TOKEN")
