@@ -227,7 +227,12 @@ class MainView(discord.ui.View):
 
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
+    try:
+        synced = await bot.tree.sync()
+        print(f"Синхронизировано {len(synced)} команд")
+    except Exception as e:
+        print(e)
+
     print(f"Bot online: {bot.user}")
 
 
