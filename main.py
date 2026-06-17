@@ -2,6 +2,8 @@ print("FILE STARTED")
 
 import os
 import asyncio
+from datetime import timedelta
+
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -316,6 +318,121 @@ async def reportplayer(interaction: discord.Interaction):
         "✅ Панель жалоб отправлена",
         ephemeral=True
     )
+
+@bot.tree.command(
+    name="mute",
+    description="Замутить участника"
+)
+@app_commands.describe(
+    player="Игрок",
+    duration="Время в минутах",
+    reason="Причина мута"
+)
+async def mute(
+    interaction: discord.Interaction,
+    player: discord.Member,
+    duration: int,
+    reason: str
+):
+
+    if not is_admin(interaction.user):
+        return await interaction.response.send_message(
+            "❌ Нет прав",
+            ephemeral=True
+        )
+
+    try:
+        until = discord.utils.utcnow() + timedelta(minutes=duration)
+
+        await player.timeout(
+            until,
+            reason=f"{interaction.user} | {reason}"
+        )
+
+        embed = discord.Embed(
+            title="🔇 Участник замучен",
+            color=discord.Color.orange()
+        )
+
+        embed.add_field(
+            name="Игрок",
+            value=player.mention,
+            inline=False
+        )
+
+        embed.add_field(
+            name="Срок",
+            value=f"{duration} мин.",
+            inline=False
+        )
+
+        embed.add_field(
+            name="Причина",
+            value=reason,
+            inline=False
+        )
+
+        embed.add_field(
+            name="Модератор",
+            value=interaction.user.mention,
+            inline=False
+        )
+
+        await interaction.response.send_message(embed=embed)
+
+        try:
+            await player.send(
+                f"🔇 Вы получили мут на сервере **{interaction.guild.name}**\n"
+                f"⏳ Срок: {duration} мин.\n"
+                f"📝 Причина: {reason}"
+            )
+        except:
+            pass
+
+        await log(
+            f"MUTE | {player} | {duration} мин | {reason} | {interaction.user}"
+        )
+
+    except Exception as e:
+        await interaction.response.send_message(
+            f"❌ Ошибка: {e}",
+            ephemeral=True
+        )
+
+@bot.tree.command(
+    name="unmute",
+    description="Снять мут с участника"
+)
+@app_commands.describe(
+    player="Игрок"
+)
+async def unmute(
+    interaction: discord.Interaction,
+    player: discord.Member
+):
+
+    if not is_admin(interaction.user):
+        return await interaction.response.send_message(
+            "❌ Нет прав",
+            ephemeral=True
+        )
+
+    try:
+        await player.timeout(None)
+
+        await interaction.response.send_message(
+            f"✅ Мут снят с {player.mention}"
+        )
+
+        await log(
+            f"UNMUTE | {player} | {interaction.user}"
+        )
+
+    except Exception as e:
+        await interaction.response.send_message(
+            f"❌ Ошибка: {e}",
+            ephemeral=True
+        )
 
 
 # ================= RUN =================
