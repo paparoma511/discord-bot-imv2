@@ -208,7 +208,7 @@ class ReportForm(discord.ui.Modal):
         embed = discord.Embed(title="Новая жалоба")
         embed.add_field(name="От", value=member.mention, inline=False)
         embed.add_field(name="На", value=self.target.value, inline=False)
-        embed.add_field(name="Был ли игрок администратором", value=self.yesorno.value, inline-False)
+        embed.add_field(name="Был ли игрок администратором", value=self.yesorno.value, inline=False)
         embed.add_field(name="Причина", value=self.reason.value, inline=False)
 
         await channel.send(embed=embed, view=CloseView(member.id))
