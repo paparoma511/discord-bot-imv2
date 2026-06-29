@@ -113,7 +113,7 @@ class AdminView(discord.ui.View):
         if user:
             await user.send("👀 **Ваша заявка на сервере IMPERIAL || Project взята на рассмотрение администрацией!**")
 
-        await interaction.response.send_message("Ваша заявка взята на рассмотрение", ephemeral=True)
+        await interaction.response.send_message("Вы взяли заявку на рассмотрение заявка на рассмотрение", ephemeral=True)
 
     @discord.ui.button(label="Принять заявку", style=discord.ButtonStyle.success)
     async def approve(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -135,11 +135,13 @@ class ApplicationForm(discord.ui.Modal):
         self.nick = discord.ui.TextInput(label="Ваш никнейм")
         self.steamid = discord.ui.TextInput(label="Ваш SteamID")
         self.steamlink = discord.ui.TextInput(label="Ссылка на ваш Steam аккаунт")
+        self.hours = discord.ui.TextInput(label-"Сколько вы наиграли часов в игре?", style=discord,TextStyle.long)
         self.about = discord.ui.TextInput(label="Расскажите о себе", style=discord.TextStyle.long)
 
         self.add_item(self.nick)
         self.add_item(self.steamid)
         self.add_item(self.steamlink)
+        self.add_item(self.hours)
         self.add_item(self.about)
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -171,6 +173,7 @@ class ApplicationForm(discord.ui.Modal):
         embed.add_field(name="Ник", value=self.nick.value, inline=False)
         embed.add_field(name="SteamID", value=self.steamid.value, inline=False)
         embed.add_field(name="Ссылка на Steam аккаунт", value=self.steamlink.value, inline=False)
+        embed.add_field(name="Часов в игре", value=self.hours.value, inline=False)
         embed.add_field(name="О себе", value=self.about.value, inline=False)
 
         await channel.send(embed=embed, view=AdminView(member.id))
@@ -182,10 +185,12 @@ class ReportForm(discord.ui.Modal):
     def __init__(self):
         super().__init__(title="Жалоба")
 
-        self.target = discord.ui.TextInput(label="На кого жалоба")
+        self.target = discord.ui.TextInput(label="Никнейм нарушителя")
+        self.yesorno = discord.ui.TextInput(label="Игрок администратор? (Да/нет)")
         self.reason = discord.ui.TextInput(label="Причина", style=discord.TextStyle.long)
 
         self.add_item(self.target)
+        self.add_item(self.yesorno)
         self.add_item(self.reason)
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -203,6 +208,7 @@ class ReportForm(discord.ui.Modal):
         embed = discord.Embed(title="Новая жалоба")
         embed.add_field(name="От", value=member.mention, inline=False)
         embed.add_field(name="На", value=self.target.value, inline=False)
+        embed.add_field(name="Был ли игрок администратором", value=self.yesorno.value, inline-False)
         embed.add_field(name="Причина", value=self.reason.value, inline=False)
 
         await channel.send(embed=embed, view=CloseView(member.id))
