@@ -135,7 +135,7 @@ class ApplicationForm(discord.ui.Modal):
         self.nick = discord.ui.TextInput(label="Ваш никнейм")
         self.steamid = discord.ui.TextInput(label="Ваш SteamID")
         self.steamlink = discord.ui.TextInput(label="Ссылка на ваш Steam аккаунт")
-        self.hours = discord.ui.TextInput(label-"Сколько вы наиграли часов в игре?", style=discord,TextStyle.long)
+        self.hours = discord.ui.TextInput(label="Сколько вы наиграли часов в игре?")
         self.about = discord.ui.TextInput(label="Расскажите о себе", style=discord.TextStyle.long)
 
         self.add_item(self.nick)
