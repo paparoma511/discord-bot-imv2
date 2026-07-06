@@ -135,14 +135,12 @@ class ApplicationForm(discord.ui.Modal):
         self.yers = discord.ui.TextInput(label="Ваш реальный возвраст")
         self.nick = discord.ui.TextInput(label="Ваш никнейм")
         self.steamid = discord.ui.TextInput(label="Ваш SteamID")
-        self.steamlink = discord.ui.TextInput(label="Ссылка на ваш Steam аккаунт")
         self.hours = discord.ui.TextInput(label="Сколько вы наиграли часов в игре?")
         self.about = discord.ui.TextInput(label="Расскажите о себе", style=discord.TextStyle.long)
 
         self.add_item(self.yers)
         self.add_item(self.nick)
         self.add_item(self.steamid)
-        self.add_item(self.steamlink)
         self.add_item(self.hours)
         self.add_item(self.about)
 
@@ -175,7 +173,6 @@ class ApplicationForm(discord.ui.Modal):
         embed.add_field(name="Ник", value=self.nick.value, inline=False)
         embed.add_field(name="Возравст", value=self.yers.value, inline=False)
         embed.add_field(name="SteamID", value=self.steamid.value, inline=False)
-        embed.add_field(name="Ссылка на Steam аккаунт", value=self.steamlink.value, inline=False)
         embed.add_field(name="Часов в игре", value=self.hours.value, inline=False)
         embed.add_field(name="О себе", value=self.about.value, inline=False)
 
