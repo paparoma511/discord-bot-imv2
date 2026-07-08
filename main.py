@@ -42,6 +42,27 @@ bot = commands.Bot(
 )
 
 
+@bot.tree.error
+async def on_app_command_error(
+    interaction: discord.Interaction,
+    error
+):
+
+    print(
+        f"COMMAND ERROR: {error}"
+    )
+
+    try:
+
+        await interaction.response.send_message(
+            f"❌ Ошибка:\n```{error}```",
+            ephemeral=True
+        )
+
+    except:
+
+        pass
+
 
 @bot.event
 async def on_ready():
