@@ -1,4 +1,5 @@
 from config import (
+
     NORULES,
     EVENTS,
     DISCORD,
@@ -6,6 +7,7 @@ from config import (
     NORULES_SLOTS,
     EVENTS_SLOTS,
     DISCORD_SLOTS
+
 )
 
 
@@ -73,23 +75,36 @@ def get_department_slots(guild):
 
 
 
-        free = data["slots"] - count
+        slots = data["slots"]
 
 
-        if free < 0:
 
-            free = 0
+        if count >= slots:
+
+
+            emoji = "❌"
+
+            status = "Мест нет"
+
+
+
+        else:
+
+
+            emoji = "✅"
+
+            status = f"Свободно мест: {slots-count}"
 
 
 
 
         text += (
 
-            f"**{name}**\n"
+            f"{emoji} **{name}** — "
 
-            f"👥 Занято: `{count}/{data['slots']}`\n"
+            f"`{count}/{slots}`\n"
 
-            f"🟢 Свободно: `{free}`\n\n"
+            f"└ {status}\n\n"
 
         )
 
