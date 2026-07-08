@@ -1,19 +1,64 @@
 import discord
 
 
-from config import (
-
-    CATEGORY_APPLICATIONS,
-
-    ADMIN_ROLE_IDS
-
-)
-
+from config import CATEGORY_APPLICATIONS, ADMIN_ROLE_IDS
 
 from views.admin_buttons import AdminView
 
-
 from database.database import add_application
+
+
+
+QUESTIONS = {
+
+
+    "NORULES": [
+
+        "Возраст",
+
+        "Ник",
+
+        "SteamID",
+
+        "Сколько часов в SCP:SL?",
+
+        "Расскажите о себе"
+
+    ],
+
+
+
+    "EVENTS": [
+
+        "Возраст",
+
+        "Ник",
+
+        "Какие ивенты хотите проводить?",
+
+        "Есть ли опыт проведения ивентов?",
+
+        "Расскажите о себе"
+
+    ],
+
+
+
+    "DISCORD": [
+
+        "Возраст",
+
+        "Ник",
+
+        "Когда создали Discord аккаунт?",
+
+        "Был ли у вас опыт работы Discord модератором?",
+
+        "Расскажите о себе"
+
+    ]
+
+}
 
 
 
@@ -33,56 +78,34 @@ class DepartmentForm(discord.ui.Modal):
         self.department = department
 
 
-
-        self.age = discord.ui.TextInput(
-
-            label="Ваш возраст"
-
-        )
-
-
-        self.nick = discord.ui.TextInput(
-
-            label="Ваш ник"
-
-        )
-
-
-        self.steam = discord.ui.TextInput(
-
-            label="Ваш SteamID"
-
-        )
-
-
-        self.about = discord.ui.TextInput(
-
-            label="Расскажите о себе",
-
-            style=discord.TextStyle.long
-
-        )
+        self.inputs = []
 
 
 
-        self.add_item(self.age)
+        for question in QUESTIONS[department]:
 
-        self.add_item(self.nick)
 
-        self.add_item(self.steam)
+            field = discord.ui.TextInput(
 
-        self.add_item(self.about)
+                label=question,
+
+                style=discord.TextStyle.long
+
+                if "Расскажите" in question
+
+                else discord.TextStyle.short
+
+            )
+
+
+            self.inputs.append(field)
+
+            self.add_item(field)
 
 
 
 
-    async def on_submit(
-
-        self,
-
-        interaction: discord.Interaction
-
-    ):
+    async def on_submit(self, interaction):
 
 
         guild = interaction.guild
@@ -104,7 +127,6 @@ class DepartmentForm(discord.ui.Modal):
         overwrites = {
 
 
-
             guild.default_role:
 
             discord.PermissionOverwrite(
@@ -121,35 +143,19 @@ class DepartmentForm(discord.ui.Modal):
 
                 read_messages=True
 
-            ),
-
-
-
-            guild.me:
-
-            discord.PermissionOverwrite(
-
-                read_messages=True
-
             )
 
         }
 
 
 
-
         for role_id in ADMIN_ROLE_IDS:
 
 
-            role = guild.get_role(
-
-                role_id
-
-            )
+            role = guild.get_role(role_id)
 
 
             if role:
-
 
                 overwrites[role] = discord.PermissionOverwrite(
 
@@ -160,31 +166,23 @@ class DepartmentForm(discord.ui.Modal):
 
 
 
-
         channel = await guild.create_text_channel(
-
 
             name=f"{self.department.lower()}-{member.name}",
 
-
             category=category,
-
 
             overwrites=overwrites
 
-
         )
-
-
 
 
 
         embed = discord.Embed(
 
-            title=f"Новая заявка | {self.department}"
+            title=f"Заявка {self.department}"
 
         )
-
 
 
         embed.add_field(
@@ -199,44 +197,18 @@ class DepartmentForm(discord.ui.Modal):
 
 
 
-        embed.add_field(
-
-            name="Возраст",
-
-            value=self.age.value
-
-        )
+        for field in self.inputs:
 
 
-        embed.add_field(
+            embed.add_field(
 
-            name="Ник",
+                name=field.label,
 
-            value=self.nick.value
+                value=field.value,
 
-        )
+                inline=False
 
-
-        embed.add_field(
-
-            name="SteamID",
-
-            value=self.steam.value
-
-        )
-
-
-        embed.add_field(
-
-            name="О себе",
-
-            value=self.about.value,
-
-            inline=False
-
-        )
-
-
+            )
 
 
 
@@ -244,14 +216,9 @@ class DepartmentForm(discord.ui.Modal):
 
             embed=embed,
 
-            view=AdminView(
-
-                member.id
-
-            )
+            view=AdminView(member.id)
 
         )
-
 
 
         await add_application(
@@ -263,8 +230,6 @@ class DepartmentForm(discord.ui.Modal):
             channel.id
 
         )
-
-
 
 
         await interaction.response.send_message(
