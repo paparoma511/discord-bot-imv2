@@ -24,7 +24,7 @@ load_dotenv()
 TOKEN = os.getenv(
     "BOT_TOKEN"
 )
-
+print("TOKEN:", TOKEN)
 
 
 intents = discord.Intents.default()
