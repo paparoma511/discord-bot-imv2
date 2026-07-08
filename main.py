@@ -96,6 +96,32 @@ async def on_ready():
 
 async def load_extensions():
 
+    print("Loading cogs")
+
+
+    await bot.load_extension(
+        "cogs.applications"
+    )
+
+    print("Applications loaded")
+
+
+    await bot.load_extension(
+        "cogs.reports"
+    )
+
+    print("Reports loaded")
+
+
+    await bot.load_extension(
+        "cogs.moderation"
+    )
+
+    print("Moderation loaded")
+
+
+async def load_extensions():
+
 
     await bot.load_extension(
         "cogs.applications"
