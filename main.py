@@ -2,11 +2,13 @@ import os
 
 import discord
 
+import create_database
+
 from discord.ext import commands
 
 from dotenv import load_dotenv
 
-from database.database import create_database
+from database.database
 
 
 from views.application_buttons import ApplicationView
