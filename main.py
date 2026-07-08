@@ -448,6 +448,8 @@ class DepartmentForm(discord.ui.Modal):
             self.department,
             self
         )
+
+
 async def create_ticket(
     interaction,
     department,
