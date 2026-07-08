@@ -1,3 +1,5 @@
+print("FILE STARTED")
+
 import os
 
 import discord
