@@ -22,7 +22,7 @@ class AdminView(discord.ui.View):
 
     @discord.ui.button(
 
-        label="Взять",
+        label="Взять на рассмотрение",
 
         style=discord.ButtonStyle.blurple,
 
@@ -54,7 +54,7 @@ class AdminView(discord.ui.View):
 
         await interaction.response.send_message(
 
-            "✅ Заявка взята",
+            "✅ Заявка взята на рассмотрение",
 
             ephemeral=True
 
