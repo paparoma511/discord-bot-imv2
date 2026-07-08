@@ -1,19 +1,25 @@
 print("FILE STARTED")
 
+
 import os
+import asyncio
+
 
 import discord
 
 from discord.ext import commands
 
+
 from dotenv import load_dotenv
+
+
+
+from database.database import create_database
 
 
 from views.application_buttons import ApplicationView
 from views.close_buttons import CloseView
 from views.admin_buttons import AdminView
-
-from database.database import create_database
 
 
 
@@ -24,14 +30,20 @@ load_dotenv()
 TOKEN = os.getenv(
     "BOT_TOKEN"
 )
-print("TOKEN:", TOKEN)
+
+
+print(
+    "TOKEN EXISTS:",
+    bool(TOKEN)
+)
+
 
 
 intents = discord.Intents.default()
 
-intents.message_content = True
-
 intents.members = True
+
+intents.message_content = True
 
 
 
@@ -44,36 +56,63 @@ bot = commands.Bot(
 )
 
 
-@bot.tree.error
-async def on_app_command_error(
-    interaction: discord.Interaction,
-    error
-):
 
-    print(
-        f"COMMAND ERROR: {error}"
+# ================= LOAD COGS =================
+
+
+async def load_extensions():
+
+
+    print("LOADING COGS...")
+
+
+    await bot.load_extension(
+        "cogs.applications"
     )
 
-    try:
+    print(
+        "APPLICATIONS LOADED"
+    )
 
-        await interaction.response.send_message(
-            f"❌ Ошибка:\n```{error}```",
-            ephemeral=True
-        )
 
-    except:
+    await bot.load_extension(
+        "cogs.reports"
+    )
 
-        pass
+    print(
+        "REPORTS LOADED"
+    )
+
+
+    await bot.load_extension(
+        "cogs.moderation"
+    )
+
+    print(
+        "MODERATION LOADED"
+    )
+
+
+
+# ================= READY =================
 
 
 @bot.event
+
 async def on_ready():
+
+
+    print(
+        "BOT READY"
+    )
 
 
     print(
         f"ONLINE: {bot.user}"
     )
 
+
+    # постоянные кнопки
 
     bot.add_view(
         ApplicationView()
@@ -90,70 +129,112 @@ async def on_ready():
     )
 
 
-    await bot.tree.sync()
+    try:
+
+
+        synced = await bot.tree.sync()
+
+
+        print(
+
+            f"SYNCED COMMANDS: {len(synced)}"
+
+        )
+
+
+    except Exception as e:
+
+
+        print(
+            "SYNC ERROR:",
+            e
+        )
 
 
 
-# загрузка модулей
-
-async def load_extensions():
-
-    print("Loading cogs")
+# ================= ERROR =================
 
 
-    await bot.load_extension(
-        "cogs.applications"
+@bot.tree.error
+
+async def command_error(
+
+    interaction: discord.Interaction,
+
+    error
+
+):
+
+
+    print(
+        "COMMAND ERROR:",
+        error
     )
 
-    print("Applications loaded")
+
+    try:
 
 
-    await bot.load_extension(
-        "cogs.reports"
-    )
+        await interaction.response.send_message(
 
-    print("Reports loaded")
+            f"❌ Ошибка:\n```{error}```",
 
+            ephemeral=True
 
-    await bot.load_extension(
-        "cogs.moderation"
-    )
-
-    print("Moderation loaded")
+        )
 
 
-async def load_extensions():
+    except:
 
 
-    await bot.load_extension(
-        "cogs.applications"
-    )
+        pass
 
 
-    await bot.load_extension(
-        "cogs.reports"
-    )
 
-
-    await bot.load_extension(
-        "cogs.moderation"
-    )
-
+# ================= START =================
 
 
 async def main():
 
 
+    print(
+        "MAIN START"
+    )
+
+
     async with bot:
+
+
+        print(
+            "BOT CONTEXT"
+        )
 
 
         await create_database()
 
 
+        print(
+            "DATABASE OK"
+        )
+
+
         await load_extensions()
 
 
+        print(
+            "COGS LOADED"
+        )
 
-import asyncio
 
-asyncio.run(main())
+        await bot.start(
+            TOKEN
+        )
+
+
+
+if __name__ == "__main__":
+
+
+    asyncio.run(
+        main()
+    )
