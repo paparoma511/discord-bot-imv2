@@ -1,5 +1,4 @@
 from config import (
-
     NORULES,
     EVENTS,
     DISCORD,
@@ -7,107 +6,113 @@ from config import (
     NORULES_SLOTS,
     EVENTS_SLOTS,
     DISCORD_SLOTS
-
 )
+
+
+DEPARTMENTS = {
+
+    "NORULES": {
+
+        "roles": NORULES,
+
+        "slots": NORULES_SLOTS
+
+    },
+
+
+    "EVENTS": {
+
+        "roles": EVENTS,
+
+        "slots": EVENTS_SLOTS
+
+    },
+
+
+    "DISCORD": {
+
+        "roles": DISCORD,
+
+        "slots": DISCORD_SLOTS
+
+    }
+
+}
+
+
+
+def get_slots(guild, department):
+
+
+    data = DEPARTMENTS[department]
+
+
+    count = 0
+
+
+    for member in guild.members:
+
+        for role in member.roles:
+
+            if role.id in data["roles"]:
+
+                count += 1
+
+                break
+
+
+
+    return {
+
+        "used": count,
+
+        "max": data["slots"],
+
+        "free": max(
+            data["slots"] - count,
+            0
+        )
+
+    }
+
+
 
 
 
 def get_department_slots(guild):
 
 
-    departments = {
-
-
-        "NORULES": {
-
-            "roles": NORULES,
-
-            "slots": NORULES_SLOTS
-
-        },
-
-
-        "EVENTS": {
-
-            "roles": EVENTS,
-
-            "slots": EVENTS_SLOTS
-
-        },
-
-
-        "DISCORD": {
-
-            "roles": DISCORD,
-
-            "slots": DISCORD_SLOTS
-
-        }
-
-
-    }
-
-
-
     text = ""
 
 
-
-    for name, data in departments.items():
-
-
-        count = 0
+    for name in DEPARTMENTS:
 
 
-
-        for member in guild.members:
-
-
-            for role in member.roles:
-
-
-                if role.id in data["roles"]:
-
-                    count += 1
-
-                    break
+        slots = get_slots(
+            guild,
+            name
+        )
 
 
-
-
-        slots = data["slots"]
-
-
-
-        if count >= slots:
-
-
-            emoji = "❌"
-
-            status = "Мест нет"
-
-
-
-        else:
-
+        if slots["free"] > 0:
 
             emoji = "✅"
 
-            status = f"Свободно мест: {slots-count}"
+        else:
 
+            emoji = "❌"
 
 
 
         text += (
 
-            f"{emoji} **{name}** — "
+            f"{emoji} **{name}** "
 
-            f"`{count}/{slots}`\n"
+            f"`{slots['used']}/{slots['max']}`\n"
 
-            f"└ {status}\n\n"
+            f"Свободно: `{slots['free']}`\n\n"
 
         )
-
 
 
     return text
