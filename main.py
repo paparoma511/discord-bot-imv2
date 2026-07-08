@@ -2,20 +2,16 @@ import os
 
 import discord
 
-import create_database
-
 from discord.ext import commands
 
 from dotenv import load_dotenv
 
-from database.database
-
 
 from views.application_buttons import ApplicationView
-
 from views.close_buttons import CloseView
-
 from views.admin_buttons import AdminView
+
+from database.database import create_database
 
 
 
